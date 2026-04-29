@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+*.egg-info/
+
+data/legal_agent.db
+
+password.txt
+
+.env
+.env.*
