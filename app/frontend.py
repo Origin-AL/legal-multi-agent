@@ -1,8 +1,7 @@
 from fastapi.responses import HTMLResponse
 
 
-INDEX_HTML = r"""
-<!doctype html>
+INDEX_HTML = """<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
@@ -30,9 +29,7 @@ INDEX_HTML = r"""
       --mono: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
       --sans: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Segoe UI", sans-serif;
     }
-
     * { box-sizing: border-box; }
-
     body {
       margin: 0;
       min-height: 100vh;
@@ -43,413 +40,356 @@ INDEX_HTML = r"""
         linear-gradient(160deg, #f7f1e7 0%, #efe4d3 55%, #ece0d0 100%);
     }
 
-    .page {
-      width: min(1320px, calc(100vw - 24px));
-      margin: 18px auto 36px;
-      display: grid;
-      gap: 18px;
+    /* ── header ── */
+    .header {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px 20px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 22px;
+      letter-spacing: -0.03em;
+    }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .health-dot {
+      width: 8px; height: 8px;
+      border-radius: 999px;
+      background: var(--muted);
+      flex-shrink: 0;
+    }
+    .health-dot.ok { background: var(--good); }
+    .health-dot.err { background: var(--bad); }
+    .health-text {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .fetch-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .fetch-row input {
+      width: 260px;
+      border: 1px solid rgba(78, 55, 31, 0.14);
+      border-radius: 10px;
+      padding: 7px 10px;
+      background: var(--panel);
+      font: inherit;
+      font-size: 13px;
+      color: var(--ink);
+      outline: none;
+    }
+    .fetch-row input:focus {
+      border-color: rgba(158, 76, 45, 0.5);
     }
 
-    .hero, .panel {
+    /* ── layout ── */
+    .layout {
+      max-width: 1200px;
+      margin: 16px auto 36px;
+      padding: 0 12px;
+      display: grid;
+      grid-template-columns: 380px minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    /* ── panels ── */
+    .panel {
       border: 1px solid var(--line);
       border-radius: var(--radius-xl);
       background: var(--panel);
       box-shadow: var(--shadow);
     }
-
-    .hero {
-      padding: 28px 28px 24px;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .hero::after {
-      content: "";
-      position: absolute;
-      right: -50px;
-      top: -60px;
-      width: 220px;
-      height: 220px;
-      border-radius: 999px;
-      background: radial-gradient(circle, rgba(158, 76, 45, 0.14), transparent 68%);
-      pointer-events: none;
-    }
-
-    .hero-badge {
-      display: inline-flex;
-      padding: 8px 12px;
-      border-radius: 999px;
-      background: rgba(34, 75, 88, 0.08);
-      color: var(--teal);
-      font-size: 12px;
-      letter-spacing: 0.08em;
-    }
-
-    h1 {
-      margin: 16px 0 10px;
-      font-size: clamp(34px, 5vw, 56px);
-      line-height: 1;
-      letter-spacing: -0.05em;
-    }
-
-    .hero p {
-      max-width: 760px;
-      margin: 0;
-      color: var(--muted);
-      font-size: 15px;
-      line-height: 1.8;
-    }
-
-    .hero-strip {
-      margin-top: 18px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-
-    .chip {
-      padding: 8px 12px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.65);
-      border: 1px solid rgba(78, 55, 31, 0.08);
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    .layout {
-      display: grid;
-      grid-template-columns: 400px minmax(0, 1fr);
-      gap: 18px;
-      align-items: start;
-    }
-
     .panel-head {
-      padding: 18px 22px;
+      padding: 16px 20px;
       border-bottom: 1px solid var(--line);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
     }
-
     .panel-head h2 {
       margin: 0;
-      font-size: 18px;
+      font-size: 17px;
       letter-spacing: -0.02em;
     }
-
-    .panel-head p {
-      margin: 4px 0 0;
-      color: var(--muted);
-      font-size: 12px;
+    .tag {
+      display: inline-flex;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 800;
     }
-
     .panel-body {
-      padding: 20px 22px 22px;
+      padding: 18px 20px 20px;
       display: grid;
-      gap: 16px;
+      gap: 14px;
     }
 
-    .field {
-      display: grid;
-      gap: 8px;
-    }
-
+    /* ── form fields ── */
+    .field { display: grid; gap: 6px; }
     .field label {
       color: var(--muted);
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 700;
     }
-
     input, textarea {
       width: 100%;
       border: 1px solid rgba(78, 55, 31, 0.14);
-      border-radius: 14px;
-      padding: 13px 14px;
+      border-radius: 12px;
+      padding: 11px 12px;
       background: var(--panel-2);
       color: var(--ink);
       font: inherit;
+      font-size: 14px;
       outline: none;
-      transition: border-color 160ms ease, box-shadow 160ms ease;
+      transition: border-color 160ms, box-shadow 160ms;
     }
-
     input:focus, textarea:focus {
       border-color: rgba(158, 76, 45, 0.55);
-      box-shadow: 0 0 0 4px rgba(158, 76, 45, 0.10);
+      box-shadow: 0 0 0 3px rgba(158, 76, 45, 0.10);
     }
-
     textarea {
-      min-height: 104px;
+      min-height: 90px;
       resize: vertical;
-      line-height: 1.65;
+      line-height: 1.6;
     }
 
+    /* ── materials ── */
+    .materials { display: grid; gap: 10px; }
+    .material {
+      border: 1px solid rgba(78, 55, 31, 0.10);
+      border-radius: 14px;
+      padding: 12px;
+      background: rgba(255,255,255,0.58);
+      display: grid;
+      gap: 8px;
+    }
+    .material-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .material-index {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .remove-btn {
+      appearance: none;
+      border: 0;
+      border-radius: 8px;
+      padding: 5px 10px;
+      background: rgba(142, 47, 47, 0.10);
+      color: var(--bad);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .remove-btn:hover { background: rgba(142, 47, 47, 0.18); }
+    .remove-btn:disabled { opacity: 0.4; cursor: default; }
+
+    /* ── buttons ── */
     .actions {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
+      gap: 8px;
     }
-
     button {
       appearance: none;
       border: 0;
-      border-radius: 14px;
-      padding: 12px 15px;
+      border-radius: 12px;
+      padding: 10px 14px;
       font: inherit;
+      font-size: 13px;
       font-weight: 800;
       cursor: pointer;
-      transition: transform 160ms ease, opacity 160ms ease;
+      transition: transform 160ms, opacity 160ms;
     }
-
     button:hover { transform: translateY(-1px); }
     button:disabled { opacity: 0.6; cursor: wait; transform: none; }
-
     .btn-primary {
       background: linear-gradient(135deg, var(--accent), var(--accent-deep));
       color: #fff8f2;
     }
-
     .btn-secondary {
       background: rgba(255,255,255,0.70);
       color: var(--ink);
       border: 1px solid rgba(78, 55, 31, 0.10);
     }
-
     .btn-ghost {
       background: rgba(34, 75, 88, 0.08);
       color: var(--teal);
     }
 
+    /* ── status ── */
     .status {
-      min-height: 54px;
-      padding: 14px;
-      border-radius: 16px;
+      min-height: 40px;
+      padding: 10px 12px;
+      border-radius: 12px;
       background: rgba(255,255,255,0.48);
       border: 1px dashed rgba(78, 55, 31, 0.14);
       color: var(--muted);
-      line-height: 1.7;
+      font-size: 13px;
+      line-height: 1.6;
       white-space: pre-wrap;
     }
 
-    .materials {
-      display: grid;
-      gap: 12px;
-    }
-
-    .material {
-      border: 1px solid rgba(78, 55, 31, 0.10);
-      border-radius: 18px;
-      padding: 14px;
-      background: rgba(255,255,255,0.58);
-      display: grid;
-      gap: 10px;
-    }
-
-    .material-top {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-    }
-
-    .material-index {
-      color: var(--muted);
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-
-    .remove-btn {
-      padding: 7px 10px;
-      border-radius: 10px;
-      background: rgba(142, 47, 47, 0.10);
-      color: var(--bad);
-      font-size: 12px;
-    }
-
-    .report {
-      display: grid;
-      gap: 16px;
-    }
-
+    /* ── report ── */
+    .report { display: grid; gap: 14px; }
     .report-banner {
-      padding: 20px 22px;
-      border-radius: 24px;
+      padding: 18px 20px;
+      border-radius: 22px;
       background: linear-gradient(135deg, rgba(34, 75, 88, 0.95), rgba(26, 54, 64, 0.92));
       color: #eef4f6;
       display: grid;
-      gap: 14px;
+      gap: 12px;
     }
-
     .report-banner h3 {
       margin: 0;
-      font-size: 24px;
+      font-size: 22px;
       letter-spacing: -0.04em;
     }
-
     .report-meta {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 10px;
+      gap: 8px;
     }
-
     .meta-box {
-      padding: 14px;
-      border-radius: 16px;
+      padding: 12px;
+      border-radius: 14px;
       background: rgba(255,255,255,0.08);
       border: 1px solid rgba(255,255,255,0.10);
     }
-
     .meta-box .k {
-      font-size: 11px;
+      font-size: 10px;
       color: rgba(238,244,246,0.72);
       text-transform: uppercase;
       letter-spacing: 0.08em;
     }
-
     .meta-box .v {
-      margin-top: 8px;
-      font-size: 18px;
+      margin-top: 6px;
+      font-size: 16px;
       font-weight: 800;
       word-break: break-word;
     }
 
+    /* ── sections ── */
     .section {
       border: 1px solid rgba(78, 55, 31, 0.10);
-      border-radius: 22px;
+      border-radius: 18px;
       background: rgba(255,255,255,0.64);
       overflow: hidden;
     }
-
     .section-head {
-      padding: 16px 20px;
+      padding: 14px 18px;
       border-bottom: 1px solid rgba(78, 55, 31, 0.08);
       display: flex;
       align-items: center;
       justify-content: space-between;
+    }
+    .section-head h4 { margin: 0; font-size: 14px; }
+    .section-body {
+      padding: 16px 18px;
+      display: grid;
       gap: 10px;
     }
-
-    .section-head h4 {
-      margin: 0;
-      font-size: 15px;
-    }
-
-    .section-body {
-      padding: 18px 20px 20px;
-      display: grid;
-      gap: 12px;
-    }
-
     .two-col {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 16px;
+      gap: 14px;
     }
-
     .lede {
       white-space: pre-wrap;
       line-height: 1.8;
-      font-size: 15px;
+      font-size: 14px;
       color: #342b23;
     }
-
     .item {
-      padding: 14px;
-      border-radius: 16px;
+      padding: 12px;
+      border-radius: 14px;
       background: rgba(255,255,255,0.68);
       border: 1px solid rgba(78, 55, 31, 0.08);
     }
-
-    .item h5 {
-      margin: 0 0 8px;
-      font-size: 15px;
-    }
-
+    .item h5 { margin: 0 0 6px; font-size: 14px; }
     .item p {
       margin: 0;
       color: var(--muted);
       line-height: 1.7;
       white-space: pre-wrap;
       word-break: break-word;
+      font-size: 13px;
     }
-
     .list {
       margin: 0;
       padding-left: 18px;
       color: var(--muted);
       display: grid;
-      gap: 8px;
+      gap: 6px;
       line-height: 1.7;
+      font-size: 13px;
     }
-
-    .tag {
-      display: inline-flex;
-      align-items: center;
-      padding: 6px 10px;
-      border-radius: 999px;
-      background: var(--accent-soft);
-      color: var(--accent);
-      font-size: 12px;
-      font-weight: 800;
-    }
-
     .tag.low { background: rgba(33, 102, 79, 0.12); color: var(--good); }
     .tag.medium { background: rgba(148, 100, 17, 0.12); color: var(--warn); }
     .tag.high { background: rgba(142, 47, 47, 0.12); color: var(--bad); }
-
     .token-row {
-      margin-top: 10px;
+      margin-top: 8px;
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: 6px;
     }
-
     .token {
-      padding: 5px 8px;
+      padding: 4px 8px;
       border-radius: 999px;
       background: rgba(34, 75, 88, 0.08);
       color: var(--teal);
-      font-size: 12px;
+      font-size: 11px;
       font-family: var(--mono);
     }
 
+    /* ── details / accordion ── */
     details {
       border: 1px solid rgba(78, 55, 31, 0.10);
-      border-radius: 18px;
+      border-radius: 16px;
       background: rgba(255,255,255,0.55);
       overflow: hidden;
     }
-
     details summary {
       list-style: none;
       cursor: pointer;
-      padding: 14px 16px;
+      padding: 12px 16px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 10px;
       font-weight: 800;
+      font-size: 14px;
     }
-
     details summary::-webkit-details-marker { display: none; }
-
     .summary-meta {
       color: var(--muted);
       font-size: 12px;
       font-weight: 600;
     }
-
     .debug-list {
-      padding: 0 16px 16px;
+      padding: 0 16px 14px;
       display: grid;
-      gap: 12px;
+      gap: 10px;
     }
-
     pre {
       margin: 0;
-      padding: 16px;
-      border-radius: 14px;
+      padding: 14px;
+      border-radius: 12px;
       background: #1d1814;
       color: #f7eedb;
       overflow: auto;
@@ -459,270 +399,193 @@ INDEX_HTML = r"""
       font-family: var(--mono);
       font-size: 12px;
     }
-
     .empty {
-      padding: 18px;
-      border-radius: 18px;
+      padding: 16px;
+      border-radius: 16px;
       border: 1px dashed rgba(78, 55, 31, 0.16);
       background: rgba(255,255,255,0.42);
       color: var(--muted);
+      font-size: 13px;
       line-height: 1.7;
     }
 
-    @media (max-width: 1160px) {
+    @media (max-width: 960px) {
       .layout { grid-template-columns: 1fr; }
     }
-
-    @media (max-width: 860px) {
+    @media (max-width: 720px) {
       .two-col, .report-meta { grid-template-columns: 1fr; }
-    }
-
-    @media (max-width: 640px) {
-      .page { width: min(100vw - 14px, 100%); margin-top: 8px; }
-      .hero, .panel-body, .panel-head, .section-head, .section-body { padding-left: 16px; padding-right: 16px; }
-      h1 { font-size: 34px; }
+      .header { flex-direction: column; align-items: flex-start; }
+      .fetch-row input { width: 100%; }
     }
   </style>
 </head>
 <body>
-  <div class="page">
-    <section class="hero">
-      <div class="hero-badge">\u6cd5\u5f8b\u591a Agent \u5de5\u4f5c\u53f0</div>
-      <h1>\u6d4f\u89c8\u5668\u6cd5\u5f8b\u5206\u6790\u5de5\u4f5c\u533a</h1>
-      <p>\u5728\u4e00\u4e2a\u9875\u9762\u91cc\u5b8c\u6210\u6848\u60c5\u5f55\u5165\u3001\u591a\u6750\u6599\u5206\u6790\u3001\u5386\u53f2\u7ed3\u679c\u56de\u67e5\u548c LLM \u8c03\u8bd5\u3002\u9875\u9762\u88ab\u6536\u7f29\u6210\u66f4\u504f\u6cd5\u5f8b\u5ba1\u67e5\u5de5\u4f5c\u6d41\uff0c\u51cf\u5c11\u4e0d\u5fc5\u8981\u7684\u89c6\u89c9\u5e72\u6270\u3002</p>
-      <div class="hero-strip">
-        <div class="chip">\u591a\u6750\u6599\u8f93\u5165</div>
-        <div class="chip">\u62a5\u544a\u5f0f\u7ed3\u679c</div>
-        <div class="chip">analysis_id \u56de\u67e5</div>
-        <div class="chip">LLM \u8c03\u8bd5\u9762\u677f</div>
+
+  <!-- header bar -->
+  <header class="header">
+    <h1>法律多 Agent 工作台</h1>
+    <div class="header-right">
+      <div class="fetch-row">
+        <input id="analysisIdInput" placeholder="输入 analysis_id 回查..." />
+        <button id="fetchBtn" class="btn-secondary" type="button">加载</button>
+      </div>
+      <div id="healthDot" class="health-dot"></div>
+      <span id="healthText" class="health-text">检查中...</span>
+    </div>
+  </header>
+
+  <div class="layout">
+
+    <!-- left: input panel -->
+    <section class="panel">
+      <div class="panel-head">
+        <h2>案件输入</h2>
+        <span class="tag">POST /analysis</span>
+      </div>
+      <div class="panel-body">
+        <div class="field">
+          <label for="userQuery">法律问题</label>
+          <textarea id="userQuery" placeholder="例如：请审查合同解除条款和违约责任风险"></textarea>
+        </div>
+        <div class="field">
+          <label for="caseTypeHint">案件类型提示 · 可选</label>
+          <input id="caseTypeHint" placeholder="例如 contract_review" />
+        </div>
+        <div class="field">
+          <label>材料列表</label>
+          <div id="materialsList" class="materials"></div>
+          <div class="actions">
+            <button id="addMaterialBtn" class="btn-ghost" type="button">+ 新增材料</button>
+          </div>
+        </div>
+        <div class="actions">
+          <button id="analyzeBtn" class="btn-primary" type="button">开始分析</button>
+          <button id="fillBtn" class="btn-secondary" type="button">载入示例</button>
+          <button id="clearBtn" class="btn-secondary" type="button">清空</button>
+        </div>
+        <div id="statusBox" class="status">就绪。填写案件后点击“开始分析”。</div>
       </div>
     </section>
 
-    <div class="layout">
-      <section class="panel">
-        <div class="panel-head">
-          <div>
-            <h2>\u6848\u4ef6\u8f93\u5165</h2>
-            <p>\u586b\u5199\u95ee\u9898\uff0c\u7ec4\u88c5\u6750\u6599\uff0c\u76f4\u63a5\u53d1\u8d77\u5206\u6790</p>
-          </div>
-          <span class="tag">POST /analysis</span>
-        </div>
-        <div class="panel-body">
-          <div class="field">
-            <label for="userQuery">\u6cd5\u5f8b\u95ee\u9898</label>
-            <textarea id="userQuery" placeholder="\u4f8b\u5982\uff1a\u8bf7\u5ba1\u67e5\u5408\u540c\u89e3\u9664\u6761\u6b3e\u548c\u8fdd\u7ea6\u8d23\u4efb\u98ce\u9669"></textarea>
-          </div>
+    <!-- right: report panel -->
+    <section class="panel">
+      <div class="panel-head">
+        <h2>分析报告</h2>
+        <span class="tag">GET /analysis/{id}</span>
+      </div>
+      <div class="panel-body">
+        <div id="emptyState" class="empty">还没有报告。运行一次分析，或通过右上角 analysis_id 取回历史结果。</div>
 
-          <div class="field">
-            <label for="caseTypeHint">\u6848\u4ef6\u7c7b\u578b\u63d0\u793a</label>
-            <input id="caseTypeHint" placeholder="\u53ef\u9009\uff0c\u4f8b\u5982 contract_review" />
-          </div>
+        <div id="reportShell" class="report" hidden>
+          <section class="report-banner">
+            <h3 id="reportTitle">分析报告</h3>
+            <div id="reportKpis" class="report-meta"></div>
+          </section>
 
-          <div class="field">
-            <label>\u6750\u6599\u5217\u8868</label>
-            <div id="materialsList" class="materials"></div>
-            <div class="actions">
-              <button id="addMaterialBtn" class="btn-ghost" type="button">\u65b0\u589e\u6750\u6599</button>
+          <section class="section">
+            <div class="section-head">
+              <h4>核心意见</h4>
+              <span id="headlineRisk" class="tag">medium</span>
             </div>
-          </div>
+            <div class="section-body">
+              <div id="draftOpinion" class="lede"></div>
+            </div>
+          </section>
 
-          <div class="actions">
-            <button id="analyzeBtn" class="btn-primary" type="button">\u5f00\u59cb\u5206\u6790</button>
-            <button id="fillBtn" class="btn-secondary" type="button">\u8f7d\u5165\u793a\u4f8b</button>
-            <button id="clearBtn" class="btn-secondary" type="button">\u6e05\u7a7a\u7ed3\u679c</button>
-          </div>
-
-          <div class="field">
-            <label for="analysisIdInput">analysis_id \u56de\u67e5</label>
-            <input id="analysisIdInput" placeholder="\u8f93\u5165 analysis_id \u540e\u70b9\u51fb\u52a0\u8f7d\u62a5\u544a" />
-          </div>
-
-          <div class="actions">
-            <button id="fetchBtn" class="btn-secondary" type="button">\u52a0\u8f7d\u62a5\u544a</button>
-            <button id="healthBtn" class="btn-secondary" type="button">\u5065\u5eb7\u68c0\u67e5</button>
-          </div>
-
-          <div id="statusBox" class="status">\u5c31\u7eea\u3002\u4f60\u53ef\u4ee5\u76f4\u63a5\u586b\u5199\u6848\u4ef6\u540e\u5f00\u59cb\u6d4b\u8bd5\u3002</div>
-          <div id="healthEcho" class="status">\u8fd8\u6ca1\u6709\u6267\u884c\u5065\u5eb7\u68c0\u67e5\u3002</div>
-        </div>
-      </section>
-
-      <section class="panel">
-        <div class="panel-head">
-          <div>
-            <h2>\u5206\u6790\u62a5\u544a</h2>
-            <p>\u805a\u7126\u7ed3\u8bba\uff0c\u95ee\u9898\uff0c\u4f9d\u636e\uff0c\u590d\u6838\uff0c\u8c03\u8bd5</p>
-          </div>
-          <span class="tag">GET /analysis/{id}</span>
-        </div>
-        <div class="panel-body">
-          <div id="emptyState" class="empty">\u8fd8\u6ca1\u6709\u62a5\u544a\u3002\u8fd0\u884c\u4e00\u6b21\u5206\u6790\uff0c\u6216\u8005\u901a\u8fc7 analysis_id \u53d6\u56de\u5386\u53f2\u7ed3\u679c\u3002</div>
-
-          <div id="reportShell" class="report" hidden>
-            <section class="report-banner">
-              <div class="chip">\u6cd5\u5f8b\u5ba1\u67e5\u8f93\u51fa</div>
-              <h3 id="reportTitle">\u5206\u6790\u62a5\u544a</h3>
-              <div id="reportKpis" class="report-meta"></div>
-            </section>
-
+          <div class="two-col">
             <section class="section">
-              <div class="section-head">
-                <h4>\u6838\u5fc3\u610f\u89c1</h4>
-                <span id="headlineRisk" class="tag">medium</span>
-              </div>
-              <div class="section-body">
-                <div id="draftOpinion" class="lede"></div>
-              </div>
+              <div class="section-head"><h4>事实提取</h4></div>
+              <div id="factsList" class="section-body"></div>
             </section>
-
-            <div class="two-col">
-              <section class="section">
-                <div class="section-head">
-                  <h4>\u4e8b\u5b9e\u63d0\u53d6</h4>
-                  <span class="chip">\u4e8b\u5b9e</span>
-                </div>
-                <div id="factsList" class="section-body"></div>
-              </section>
-
-              <section class="section">
-                <div class="section-head">
-                  <h4>\u5efa\u8bae\u52a8\u4f5c</h4>
-                  <span class="chip">\u540e\u7eed</span>
-                </div>
-                <div class="section-body">
-                  <ul id="actionsList" class="list"></ul>
-                </div>
-              </section>
-            </div>
-
             <section class="section">
-              <div class="section-head">
-                <h4>\u95ee\u9898\u9879\u4e0e\u98ce\u9669</h4>
-                <span class="chip">\u98ce\u9669</span>
-              </div>
-              <div id="issuesList" class="section-body"></div>
+              <div class="section-head"><h4>建议动作</h4></div>
+              <div class="section-body"><ul id="actionsList" class="list"></ul></div>
             </section>
-
-            <div class="two-col">
-              <section class="section">
-                <div class="section-head">
-                  <h4>\u6cd5\u5f8b\u4f9d\u636e</h4>
-                  <span class="chip">\u68c0\u7d22</span>
-                </div>
-                <div id="basisList" class="section-body"></div>
-              </section>
-
-              <section class="section">
-                <div class="section-head">
-                  <h4>\u8d44\u6df1\u590d\u6838</h4>
-                  <span class="chip">\u8d28\u63a7</span>
-                </div>
-                <div class="section-body">
-                  <ul id="reviewList" class="list"></ul>
-                </div>
-              </section>
-            </div>
-
-            <details>
-              <summary>
-                <span>Agent \u534f\u8c03\u65e5\u5fd7</span>
-                <span class="summary-meta">\u5185\u90e8\u6d41\u8f6c</span>
-              </summary>
-              <div id="coordinationList" class="debug-list"></div>
-            </details>
-
-            <details>
-              <summary>
-                <span>Agent \u6267\u884c\u8f68\u8ff9</span>
-                <span class="summary-meta">\u8282\u70b9\u6458\u8981</span>
-              </summary>
-              <div id="traceList" class="debug-list"></div>
-            </details>
-
-            <details id="debugPanel">
-              <summary>
-                <span>LLM \u8c03\u8bd5\u9762\u677f</span>
-                <span id="debugMeta" class="summary-meta">0 entries</span>
-              </summary>
-              <div id="debugList" class="debug-list"></div>
-            </details>
-
-            <details>
-              <summary>
-                <span>\u539f\u59cb JSON</span>
-                <span class="summary-meta">\u5b8c\u6574\u54cd\u5e94</span>
-              </summary>
-              <div class="debug-list">
-                <pre id="rawJson"></pre>
-              </div>
-            </details>
           </div>
+
+          <section class="section">
+            <div class="section-head">
+              <h4>问题项与风险</h4>
+            </div>
+            <div id="issuesList" class="section-body"></div>
+          </section>
+
+          <div class="two-col">
+            <section class="section">
+              <div class="section-head"><h4>法律依据</h4></div>
+              <div id="basisList" class="section-body"></div>
+            </section>
+            <section class="section">
+              <div class="section-head"><h4>资深复核</h4></div>
+              <div class="section-body"><ul id="reviewList" class="list"></ul></div>
+            </section>
+          </div>
+
+          <details>
+            <summary>
+              <span>Agent 协调日志</span>
+              <span class="summary-meta">流转记录</span>
+            </summary>
+            <div id="coordinationList" class="debug-list"></div>
+          </details>
+
+          <details>
+            <summary>
+              <span>Agent 执行轨迹</span>
+              <span class="summary-meta">节点摘要</span>
+            </summary>
+            <div id="traceList" class="debug-list"></div>
+          </details>
+
+          <details id="debugPanel">
+            <summary>
+              <span>LLM 调试面板</span>
+              <span id="debugMeta" class="summary-meta">0 entries</span>
+            </summary>
+            <div id="debugList" class="debug-list"></div>
+          </details>
+
+          <details>
+            <summary>
+              <span>原始 JSON</span>
+              <span class="summary-meta">完整响应</span>
+            </summary>
+            <div class="debug-list"><pre id="rawJson"></pre></div>
+          </details>
         </div>
-      </section>
-    </div>
+      </div>
+    </section>
   </div>
 
   <template id="materialTemplate">
     <article class="material">
       <div class="material-top">
-        <div class="material-index">Material</div>
-        <button class="remove-btn" type="button">\u5220\u9664</button>
+        <span class="material-index">材料 1</span>
+        <button class="remove-btn" type="button">删除</button>
       </div>
       <div class="field">
-        <label>\u6807\u9898</label>
-        <input data-role="title" placeholder="\u4f8b\u5982\uff1a\u670d\u52a1\u5408\u540c" />
+        <label>标题</label>
+        <input data-role="title" placeholder="例如：服务合同" />
       </div>
       <div class="field">
-        <label>\u5185\u5bb9</label>
-        <textarea data-role="content" placeholder="\u7c98\u8d34\u6750\u6599\u6b63\u6587"></textarea>
+        <label>内容</label>
+        <textarea data-role="content" placeholder="粘贴材料正文"></textarea>
       </div>
     </article>
   </template>
 
   <script>
-    function decodeUnicodeEscapes(text) {
-      return String(text).replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) =>
-        String.fromCharCode(parseInt(hex, 16))
-      );
-    }
-
-    function decodeNodeTree(root) {
-      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-      const textNodes = [];
-      while (walker.nextNode()) {
-        textNodes.push(walker.currentNode);
-      }
-      textNodes.forEach(node => {
-        if (node.nodeValue && node.nodeValue.includes("\\u")) {
-          node.nodeValue = decodeUnicodeEscapes(node.nodeValue);
-        }
-      });
-
-      root.querySelectorAll("[placeholder]").forEach(el => {
-        const value = el.getAttribute("placeholder");
-        if (value && value.includes("\\u")) {
-          el.setAttribute("placeholder", decodeUnicodeEscapes(value));
-        }
-      });
-
-      root.querySelectorAll("input, textarea").forEach(el => {
-        if (typeof el.value === "string" && el.value.includes("\\u")) {
-          el.value = decodeUnicodeEscapes(el.value);
-        }
-      });
-    }
-
     const example = {
-      user_query: "\u8bf7\u5ba1\u67e5\u8fd9\u4efd\u5408\u540c\u4e2d\u7684\u89e3\u9664\u6761\u6b3e\u548c\u8fdd\u7ea6\u8d23\u4efb\u98ce\u9669\uff0c\u5e76\u8bf4\u660e\u89e3\u9664\u6761\u4ef6\u662f\u5426\u660e\u786e\u3001\u8fdd\u7ea6\u91d1\u662f\u5426\u53ef\u80fd\u88ab\u8c03\u51cf\u3002",
+      user_query: "请审查这份合同中的解除条款和违约责任风险，并说明解除条件是否明确、违约金是否可能被调减。",
       case_type_hint: "contract_review",
       materials: [
         {
-          title: "\u670d\u52a1\u5408\u540c",
-          content: "\u7532\u65b9\u59d4\u6258\u4e59\u65b9\u63d0\u4f9b\u670d\u52a1\u3002\u82e5\u4e59\u65b9\u903e\u671f15\u65e5\u672a\u5b8c\u6210\u4ea4\u4ed8\uff0c\u7532\u65b9\u53ef\u4ee5\u89e3\u9664\u5408\u540c\u3002\u8fdd\u7ea6\u91d1\u6309\u5408\u540c\u603b\u4ef7\u768430%\u8ba1\u7b97\u3002"
+          title: "服务合同",
+          content: "甲方委托乙方提供服务。若乙方逾期15日未完成交付，甲方可以解除合同。违约金按合同总价的30%计算。"
         },
         {
-          title: "\u5f80\u6765\u8bb0\u5f55",
-          content: "\u4e59\u65b9\u5728\u7b2c10\u5929\u8868\u793a\u53ef\u80fd\u5ef6\u671f\uff0c\u4f46\u672a\u63d0\u4ea4\u660e\u786e\u8865\u6551\u65b9\u6848\u3002"
+          title: "往来记录",
+          content: "乙方在第10天表示可能延期，但未提交明确补救方案。"
         }
       ]
     };
@@ -737,10 +600,10 @@ INDEX_HTML = r"""
       fillBtn: document.getElementById("fillBtn"),
       clearBtn: document.getElementById("clearBtn"),
       fetchBtn: document.getElementById("fetchBtn"),
-      healthBtn: document.getElementById("healthBtn"),
       analysisIdInput: document.getElementById("analysisIdInput"),
       statusBox: document.getElementById("statusBox"),
-      healthEcho: document.getElementById("healthEcho"),
+      healthDot: document.getElementById("healthDot"),
+      healthText: document.getElementById("healthText"),
       emptyState: document.getElementById("emptyState"),
       reportShell: document.getElementById("reportShell"),
       reportTitle: document.getElementById("reportTitle"),
@@ -768,97 +631,75 @@ INDEX_HTML = r"""
         .replace(/'/g, "&#39;");
     }
 
-    function setStatus(message, tone = "muted") {
+    function setStatus(message, tone) {
       el.statusBox.textContent = message;
-      const colors = {
-        muted: "var(--muted)",
-        info: "var(--teal)",
-        good: "var(--good)",
-        error: "var(--bad)"
-      };
+      const colors = { muted: "var(--muted)", info: "var(--teal)", good: "var(--good)", error: "var(--bad)" };
       el.statusBox.style.color = colors[tone] || colors.muted;
     }
 
-    function setHealth(message, tone = "muted") {
-      el.healthEcho.textContent = message;
-      const colors = {
-        muted: "var(--muted)",
-        good: "var(--good)",
-        error: "var(--bad)"
-      };
-      el.healthEcho.style.color = colors[tone] || colors.muted;
+    function setHealth(ok) {
+      el.healthDot.className = "health-dot " + (ok ? "ok" : "err");
+      el.healthText.textContent = ok ? "服务正常" : "服劣异常";
     }
 
     function setBusy(isBusy, message) {
       el.analyzeBtn.disabled = isBusy;
       el.fetchBtn.disabled = isBusy;
-      if (message) {
-        setStatus(message, isBusy ? "info" : "muted");
-      }
+      if (message) setStatus(message, isBusy ? "info" : "muted");
     }
 
-    function createMaterialCard(data = {}) {
-      const fragment = el.materialTemplate.content.cloneNode(true);
-      const card = fragment.querySelector(".material");
-      const titleInput = fragment.querySelector('[data-role="title"]');
-      const contentInput = fragment.querySelector('[data-role="content"]');
-      const removeBtn = fragment.querySelector(".remove-btn");
-
-      titleInput.value = data.title || "";
-      contentInput.value = data.content || "";
-
-      removeBtn.addEventListener("click", () => {
+    function createMaterialCard(data) {
+      data = data || {};
+      const frag = el.materialTemplate.content.cloneNode(true);
+      const card = frag.querySelector(".material");
+      frag.querySelector('[data-role="title"]').value = data.title || "";
+      frag.querySelector('[data-role="content"]').value = data.content || "";
+      frag.querySelector(".remove-btn").addEventListener("click", function() {
         card.remove();
         refreshMaterialLabels();
       });
-
-      el.materialsList.appendChild(fragment);
+      el.materialsList.appendChild(frag);
       refreshMaterialLabels();
     }
 
     function refreshMaterialLabels() {
-      [...el.materialsList.children].forEach((node, index) => {
-        const label = node.querySelector(".material-index");
-        const removeBtn = node.querySelector(".remove-btn");
-        label.textContent = `\u6750\u6599 ${index + 1}`;
-        removeBtn.disabled = el.materialsList.children.length === 1;
-      });
+      const children = el.materialsList.children;
+      for (let i = 0; i < children.length; i++) {
+        children[i].querySelector(".material-index").textContent = "材料 " + (i + 1);
+        children[i].querySelector(".remove-btn").disabled = children.length === 1;
+      }
     }
 
     function loadExample() {
       el.userQuery.value = example.user_query;
       el.caseTypeHint.value = example.case_type_hint;
       el.materialsList.innerHTML = "";
-      example.materials.forEach(item => createMaterialCard(item));
-      setStatus("\u5df2\u52a0\u8f7d\u793a\u4f8b\u6570\u636e\u3002", "good");
+      example.materials.forEach(function(item) { createMaterialCard(item); });
+      setStatus("已加载示例数据。", "good");
     }
 
     function collectPayload() {
-      const materials = [...el.materialsList.children]
-        .map(node => ({
-          title: node.querySelector('[data-role="title"]').value.trim(),
-          content: node.querySelector('[data-role="content"]').value.trim()
-        }))
-        .filter(item => item.content);
-
+      var materials = [];
+      var nodes = el.materialsList.children;
+      for (var i = 0; i < nodes.length; i++) {
+        var t = nodes[i].querySelector('[data-role="title"]').value.trim();
+        var c = nodes[i].querySelector('[data-role="content"]').value.trim();
+        if (c) materials.push({ title: t, content: c });
+      }
       return {
         user_query: el.userQuery.value.trim(),
         case_type_hint: el.caseTypeHint.value.trim() || null,
-        materials
+        materials: materials
       };
     }
 
     async function requestJson(url, options) {
-      const response = await fetch(url, options);
-      const text = await response.text();
-      let parsed = null;
-      try {
-        parsed = text ? JSON.parse(text) : null;
-      } catch {
-        parsed = { raw: text };
-      }
+      var response = await fetch(url, options);
+      var text = await response.text();
+      var parsed = null;
+      try { parsed = text ? JSON.parse(text) : null; } catch(e) { parsed = { raw: text }; }
       if (!response.ok) {
-        const detail = parsed && parsed.detail ? parsed.detail : text || `HTTP ${response.status}`;
+        var detail = parsed && parsed.detail ? parsed.detail : text || "HTTP " + response.status;
         throw new Error(detail);
       }
       return parsed;
@@ -866,7 +707,7 @@ INDEX_HTML = r"""
 
     function renderList(container, items, renderer, emptyText) {
       if (!items || !items.length) {
-        container.innerHTML = `<div class="empty">${escapeHtml(emptyText)}</div>`;
+        container.innerHTML = '<div class="empty">' + escapeHtml(emptyText) + '</div>';
         return;
       }
       container.innerHTML = items.map(renderer).join("");
@@ -874,177 +715,107 @@ INDEX_HTML = r"""
 
     function renderSimpleList(container, items, emptyText) {
       if (!items || !items.length) {
-        container.innerHTML = `<div class="empty">${escapeHtml(emptyText)}</div>`;
+        container.innerHTML = '<div class="empty">' + escapeHtml(emptyText) + '</div>';
         return;
       }
-      container.innerHTML = `<ul class="list">${items.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
+      container.innerHTML = '<ul class="list">' + items.map(function(item) {
+        return '<li>' + escapeHtml(item) + '</li>';
+      }).join("") + '</ul>';
     }
 
     function renderMeta(data) {
-      const items = [
+      var items = [
         ["analysis_id", data.analysis_id],
         ["matter_type", data.matter_type],
         ["risk_level", data.risk_level],
         ["confidence", data.confidence]
       ];
-      el.reportKpis.innerHTML = items.map(([k, v]) => `
-        <div class="meta-box">
-          <div class="k">${escapeHtml(k)}</div>
-          <div class="v">${escapeHtml(v ?? "-")}</div>
-        </div>
-      `).join("");
+      el.reportKpis.innerHTML = items.map(function(pair) {
+        return '<div class="meta-box"><div class="k">' + escapeHtml(pair[0]) + '</div><div class="v">' + escapeHtml(pair[1] || "-") + '</div></div>';
+      }).join("");
     }
 
     function renderReport(data) {
       el.emptyState.hidden = true;
       el.reportShell.hidden = false;
       el.analysisIdInput.value = data.analysis_id || "";
-      el.reportTitle.textContent = `${data.matter_type || "legal"} \u5206\u6790\u62a5\u544a`;
+      el.reportTitle.textContent = (data.matter_type || "legal") + " 分析报告";
       el.headlineRisk.textContent = data.risk_level || "medium";
-      el.headlineRisk.className = `tag ${escapeHtml(data.risk_level || "medium")}`;
-      el.draftOpinion.textContent = data.draft_opinion || "\u6682\u65e0\u521d\u6b65\u610f\u89c1\u3002";
+      el.headlineRisk.className = "tag " + escapeHtml(data.risk_level || "medium");
+      el.draftOpinion.textContent = data.draft_opinion || "暂无初步意见。";
       renderMeta(data);
 
-      renderList(
-        el.factsList,
-        data.facts,
-        (fact, index) => `
-          <div class="item">
-            <h5>\u4e8b\u5b9e ${index + 1}</h5>
-            <p>${escapeHtml(fact)}</p>
-          </div>
-        `,
-        "\u6682\u65e0\u4e8b\u5b9e\u63d0\u53d6\u3002"
-      );
+      renderList(el.factsList, data.facts, function(fact, index) {
+        return '<div class="item"><h5>事实 ' + (index + 1) + '</h5><p>' + escapeHtml(fact) + '</p></div>';
+      }, "暂无事实提取。");
 
-      renderSimpleList(el.actionsList, data.suggested_actions, "\u6682\u65e0\u5efa\u8bae\u52a8\u4f5c\u3002");
+      renderSimpleList(el.actionsList, data.suggested_actions, "暂无建议动作。");
 
-      renderList(
-        el.issuesList,
-        data.issues,
-        (issue) => `
-          <div class="item">
-            <h5>${escapeHtml(issue.title || "\u672a\u547d\u540d\u95ee\u9898")}</h5>
-            <p>${escapeHtml(issue.analysis || "")}</p>
-            <div class="token-row">
-              <span class="tag ${escapeHtml(issue.risk_level || "medium")}">${escapeHtml(issue.risk_level || "medium")}</span>
-            </div>
-          </div>
-        `,
-        "\u6682\u65e0\u95ee\u9898\u9879\u3002"
-      );
+      renderList(el.issuesList, data.issues, function(issue) {
+        var tags = '<div class="token-row"><span class="tag ' + escapeHtml(issue.risk_level || "medium") + '">' + escapeHtml(issue.risk_level || "medium") + '</span></div>';
+        return '<div class="item"><h5>' + escapeHtml(issue.title || "未命名问题") + '</h5><p>' + escapeHtml(issue.analysis || "") + '</p>' + tags + '</div>';
+      }, "暂无问题项。");
 
-      renderList(
-        el.basisList,
-        data.legal_basis,
-        (basis) => `
-          <div class="item">
-            <h5>${escapeHtml(basis.title || "")}</h5>
-            <p>${escapeHtml(basis.excerpt || "")}</p>
-            <div class="token-row">
-              <span class="token">${escapeHtml(basis.source_type || "source")}</span>
-              <span class="token">${escapeHtml(basis.reference_id || "")}</span>
-              <span class="token">score: ${escapeHtml(basis.score ?? "-")}</span>
-            </div>
-          </div>
-        `,
-        "\u6682\u65e0\u6cd5\u5f8b\u4f9d\u636e\u3002"
-      );
+      renderList(el.basisList, data.legal_basis, function(basis) {
+        var tokens = '<div class="token-row"><span class="token">' + escapeHtml(basis.source_type || "") + '</span><span class="token">' + escapeHtml(basis.reference_id || "") + '</span><span class="token">score: ' + escapeHtml(basis.score != null ? basis.score : "-") + '</span></div>';
+        return '<div class="item"><h5>' + escapeHtml(basis.title || "") + '</h5><p>' + escapeHtml(basis.excerpt || "") + '</p>' + tokens + '</div>';
+      }, "暂无法律依据。");
 
-      renderSimpleList(el.reviewList, data.review_notes, "\u6682\u65e0\u590d\u6838\u610f\u89c1\u3002");
+      renderSimpleList(el.reviewList, data.review_notes, "暂无复核意见。");
 
-      renderList(
-        el.coordinationList,
-        data.coordination_log,
-        (entry) => `
-          <div class="item">
-            <h5>${escapeHtml(entry.sender || "")} → ${escapeHtml(entry.recipient || "")}</h5>
-            <p>${escapeHtml(entry.content || "")}</p>
-          </div>
-        `,
-        "\u6682\u65e0\u534f\u8c03\u65e5\u5fd7\u3002"
-      );
+      renderList(el.coordinationList, data.coordination_log, function(entry) {
+        return '<div class="item"><h5>' + escapeHtml(entry.sender || "") + " → " + escapeHtml(entry.recipient || "") + '</h5><p>' + escapeHtml(entry.content || "") + '</p></div>';
+      }, "暂无协调日志。");
 
-      renderList(
-        el.traceList,
-        data.trace,
-        (entry) => `
-          <div class="item">
-            <h5>${escapeHtml(entry.agent_name || "")}</h5>
-            <p>${escapeHtml(entry.summary || "")}</p>
-          </div>
-        `,
-        "\u6682\u65e0\u6267\u884c\u8f68\u8ff9\u3002"
-      );
+      renderList(el.traceList, data.trace, function(entry) {
+        return '<div class="item"><h5>' + escapeHtml(entry.agent_name || "") + '</h5><p>' + escapeHtml(entry.summary || "") + '</p></div>';
+      }, "暂无执行轨迹。");
 
-      renderList(
-        el.debugList,
-        data.llm_debug,
-        (entry) => `
-          <div class="item">
-            <h5>${escapeHtml(entry.agent_name || "agent")} · ${escapeHtml(entry.task || "task")}</h5>
-            <pre>${escapeHtml(JSON.stringify(entry.output, null, 2))}</pre>
-          </div>
-        `,
-        "\u6682\u65e0 LLM \u8c03\u8bd5\u8f93\u51fa\u3002"
-      );
+      renderList(el.debugList, data.llm_debug, function(entry) {
+        return '<div class="item"><h5>' + escapeHtml(entry.agent_name || "agent") + " · " + escapeHtml(entry.task || "task") + '</h5><pre>' + escapeHtml(JSON.stringify(entry.output, null, 2)) + '</pre></div>';
+      }, "暂无 LLM 调试输出。");
 
-      el.debugMeta.textContent = `${Array.isArray(data.llm_debug) ? data.llm_debug.length : 0} entries`;
+      el.debugMeta.textContent = (Array.isArray(data.llm_debug) ? data.llm_debug.length : 0) + " entries";
       el.rawJson.textContent = JSON.stringify(data, null, 2);
     }
 
     async function runAnalysis() {
-      const payload = collectPayload();
-      if (!payload.user_query) {
-        setStatus("\u8bf7\u5148\u586b\u5199\u6cd5\u5f8b\u95ee\u9898\u3002", "error");
-        return;
-      }
-      if (!payload.materials.length) {
-        setStatus("\u81f3\u5c11\u9700\u8981\u4e00\u4efd\u6709\u5185\u5bb9\u7684\u6750\u6599\u3002", "error");
-        return;
-      }
-
-      setBusy(true, "\u6b63\u5728\u8fd0\u884c\u591a Agent \u5206\u6790...");
+      var payload = collectPayload();
+      if (!payload.user_query) { setStatus("请先填写法律问题。", "error"); return; }
+      if (!payload.materials.length) { setStatus("至少需要一份有内容的材料。", "error"); return; }
+      setBusy(true, "正在运行多 Agent 分析...");
       try {
-        const data = await requestJson("/analysis", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
+        var data = await requestJson("/analysis", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
         renderReport(data);
-        setStatus(`\u5206\u6790\u5b8c\u6210\uff0canalysis_id: ${data.analysis_id}`, "good");
+        setStatus("分析完成，analysis_id: " + data.analysis_id, "good");
       } catch (error) {
-        setStatus(`\u5206\u6790\u5931\u8d25\uff1a${error.message}`, "error");
+        setStatus("分析失败：" + error.message, "error");
       } finally {
         setBusy(false);
       }
     }
 
     async function fetchAnalysis() {
-      const analysisId = el.analysisIdInput.value.trim();
-      if (!analysisId) {
-        setStatus("\u8bf7\u8f93\u5165 analysis_id\u3002", "error");
-        return;
-      }
-      setBusy(true, "\u6b63\u5728\u52a0\u8f7d\u5386\u53f2\u62a5\u544a...");
+      var analysisId = el.analysisIdInput.value.trim();
+      if (!analysisId) { setStatus("请输入 analysis_id。", "error"); return; }
+      setBusy(true, "正在加载历史报告...");
       try {
-        const data = await requestJson(`/analysis/${encodeURIComponent(analysisId)}`, { method: "GET" });
+        var data = await requestJson("/analysis/" + encodeURIComponent(analysisId), { method: "GET" });
         renderReport(data);
-        setStatus(`\u5df2\u53d6\u56de\u62a5\u544a\uff1a${data.analysis_id}`, "good");
+        setStatus("已取回报告：" + data.analysis_id, "good");
       } catch (error) {
-        setStatus(`\u52a0\u8f7d\u5931\u8d25\uff1a${error.message}`, "error");
+        setStatus("加载失败：" + error.message, "error");
       } finally {
         setBusy(false);
       }
     }
 
     async function checkHealth() {
-      setHealth("\u6b63\u5728\u68c0\u67e5\u670d\u52a1\u72b6\u6001...");
       try {
-        const data = await requestJson("/health", { method: "GET" });
-        setHealth(`\u670d\u52a1\u6b63\u5e38\uff1a${JSON.stringify(data)}`, "good");
+        await requestJson("/health", { method: "GET" });
+        setHealth(true);
       } catch (error) {
-        setHealth(`\u5065\u5eb7\u68c0\u67e5\u5931\u8d25\uff1a${error.message}`, "error");
+        setHealth(false);
       }
     }
 
@@ -1053,24 +824,21 @@ INDEX_HTML = r"""
       el.reportShell.hidden = true;
       el.analysisIdInput.value = "";
       el.rawJson.textContent = "";
-      setStatus("\u5df2\u6e05\u7a7a\u7ed3\u679c\u533a\u3002");
+      setStatus("已清空结果区。");
     }
 
-    el.addMaterialBtn.addEventListener("click", () => createMaterialCard());
+    el.addMaterialBtn.addEventListener("click", function() { createMaterialCard(); });
     el.fillBtn.addEventListener("click", loadExample);
     el.clearBtn.addEventListener("click", clearReport);
     el.analyzeBtn.addEventListener("click", runAnalysis);
     el.fetchBtn.addEventListener("click", fetchAnalysis);
-    el.healthBtn.addEventListener("click", checkHealth);
 
-    decodeNodeTree(document.body);
     createMaterialCard();
     loadExample();
     checkHealth();
   </script>
 </body>
-</html>
-"""
+</html>"""
 
 
 def render_index() -> HTMLResponse:
