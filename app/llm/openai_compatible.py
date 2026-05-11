@@ -1,11 +1,19 @@
 from __future__ import annotations
 
 import json
+import logging
+import time
 from typing import Any
 from urllib import request
 from urllib.error import HTTPError, URLError
 
 from app.llm.base import BaseLLMProvider
+
+logger = logging.getLogger(__name__)
+
+_MAX_RETRIES = 3
+_RETRY_BACKOFF_BASE = 1.5
+_RETRYABLE_HTTP_CODES = {408, 429, 500, 502, 503, 504}
 
 
 class OpenAICompatibleProvider(BaseLLMProvider):
@@ -27,23 +35,39 @@ class OpenAICompatibleProvider(BaseLLMProvider):
             "temperature": 0.1,
             "enable_thinking": False,
         }
-        http_request = request.Request(
-            url=f"{self.base_url}/chat/completions",
-            data=json.dumps(payload).encode("utf-8"),
-            headers={
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-            },
-            method="POST",
-        )
-        try:
-            with request.urlopen(http_request, timeout=60) as response:
-                raw = json.loads(response.read().decode("utf-8"))
-        except HTTPError as exc:
-            body = exc.read().decode("utf-8", errors="replace")
-            raise RuntimeError(f"LLM provider returned HTTP {exc.code}: {body}") from exc
-        except URLError as exc:
-            raise RuntimeError(f"LLM provider request failed: {exc.reason}") from exc
+        body = json.dumps(payload).encode("utf-8")
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        url = f"{self.base_url}/chat/completions"
+
+        last_exc: Exception | None = None
+        for attempt in range(_MAX_RETRIES):
+            http_request = request.Request(url=url, data=body, headers=headers, method="POST")
+            try:
+                with request.urlopen(http_request, timeout=60) as resp:
+                    raw = json.loads(resp.read().decode("utf-8"))
+                break
+            except HTTPError as exc:
+                last_exc = exc
+                if exc.code not in _RETRYABLE_HTTP_CODES:
+                    raise RuntimeError(
+                        f"LLM provider returned HTTP {exc.code}: {exc.read().decode('utf-8', errors='replace')}"
+                    ) from exc
+                logger.warning("LLM HTTP %d on attempt %d/%d", exc.code, attempt + 1, _MAX_RETRIES)
+            except URLError as exc:
+                last_exc = exc
+                logger.warning("LLM network error on attempt %d/%d: %s", attempt + 1, _MAX_RETRIES, exc.reason)
+            except TimeoutError:
+                last_exc = TimeoutError("request timed out")
+                logger.warning("LLM timeout on attempt %d/%d", attempt + 1, _MAX_RETRIES)
+
+            if attempt < _MAX_RETRIES - 1:
+                delay = _RETRY_BACKOFF_BASE * (2 ** attempt) + attempt * 0.3
+                time.sleep(delay)
+        else:
+            raise RuntimeError(f"LLM provider failed after {_MAX_RETRIES} attempts: {last_exc}") from last_exc
 
         content = raw["choices"][0]["message"]["content"]
         if isinstance(content, list):

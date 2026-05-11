@@ -1,4 +1,19 @@
-from fastapi import FastAPI, HTTPException
+import json
+import logging
+from collections.abc import AsyncGenerator
+from datetime import datetime
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse, StreamingResponse
+
+logger = logging.getLogger(__name__)
+
+
+class _Encoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, datetime):
+            return o.isoformat()
+        return super().default(o)
 
 from app.config import settings
 from app.frontend import render_index
@@ -14,6 +29,15 @@ app = FastAPI(
     version="0.2.0",
     description="Prompt-driven legal multi-agent backend with local RAG and SQLite persistence.",
 )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    logger.exception("Unhandled exception on %s %s: %s", request.method, request.url.path, exc)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "服务器内部错误，请稍后重试。"},
+    )
 
 repository = AnalysisRepository(settings.database_path)
 retriever = LegalKnowledgeRetriever(load_knowledge_documents(settings.knowledge_base_path))
@@ -39,6 +63,18 @@ def analyze_case(request: AnalysisRequest) -> AnalysisResponse:
     if not request.user_query.strip():
         raise HTTPException(status_code=400, detail="user_query must not be empty")
     return orchestrator.run(request)
+
+
+@app.post("/analysis/stream")
+async def analyze_case_stream(request: AnalysisRequest):
+    if not request.user_query.strip():
+        raise HTTPException(status_code=400, detail="user_query must not be empty")
+
+    async def event_generator() -> AsyncGenerator[str, None]:
+        for chunk in orchestrator.run_streaming(request):
+            yield f"data: {json.dumps(chunk, ensure_ascii=False, cls=_Encoder)}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
 @app.get("/analysis/{analysis_id}", response_model=AnalysisResponse)

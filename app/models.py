@@ -69,6 +69,12 @@ class IssueItem(BaseModel):
     citations: list[Citation] = Field(default_factory=list)
 
 
+class AgentError(BaseModel):
+    agent_name: str
+    error_type: str
+    message: str
+
+
 class AnalysisResponse(BaseModel):
     analysis_id: str
     case_id: str
@@ -84,6 +90,7 @@ class AnalysisResponse(BaseModel):
     coordination_log: list[CoordinationMessage]
     trace: list[AgentTrace]
     llm_debug: list[LLMDebugEntry] = Field(default_factory=list)
+    agent_errors: list[AgentError] = Field(default_factory=list)
     created_at: datetime
 
 
@@ -102,3 +109,5 @@ class KnowledgeDocument(BaseModel):
     excerpt: str
     body: str
     tags: list[str] = Field(default_factory=list)
+    law_category: str = ""
+    layer_type: str = "statute"

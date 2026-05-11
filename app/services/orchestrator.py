@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import logging
+from collections.abc import Generator
+from typing import Any
+
 from app.agents.facts import FactExtractionAgent
 from app.agents.intake import IntakeAgent
 from app.agents.reasoning import LegalReasoningAgent
@@ -9,6 +13,7 @@ from app.config import settings
 from app.llm.factory import build_llm_provider
 from app.llm.base import BaseLLMProvider
 from app.models import (
+    AgentError,
     AgentTrace,
     AnalysisRequest,
     AnalysisResponse,
@@ -20,6 +25,35 @@ from app.models import (
 from app.rag.knowledge_loader import load_knowledge_documents
 from app.rag.retriever import LegalKnowledgeRetriever
 from app.repositories.analysis_repository import AnalysisRepository
+
+logger = logging.getLogger(__name__)
+
+_FALLBACK_RESULTS: dict[str, dict[str, Any]] = {
+    "intake_agent": {
+        "matter_type": "general_legal_consultation",
+        "summary": "Intake failed; defaulted to general consultation.",
+    },
+    "fact_extraction_agent": {
+        "facts": [],
+        "summary": "Fact extraction failed; no facts extracted.",
+    },
+    "legal_retrieval_agent": {
+        "legal_basis": [],
+        "summary": "Legal retrieval failed; no authorities found.",
+    },
+    "legal_reasoning_agent": {
+        "issues": [],
+        "risk_level": RiskLevel.medium,
+        "suggested_actions": [],
+        "draft_opinion": "分析生成失败，请稍后重试。",
+        "summary": "Reasoning failed; no opinion generated.",
+    },
+    "review_agent": {
+        "confidence": ConfidenceLevel.low,
+        "review_notes": [],
+        "summary": "Review failed; skipped.",
+    },
+}
 
 
 class LegalOrchestrator:
@@ -43,22 +77,36 @@ class LegalOrchestrator:
             ReviewAgent(llm_provider),
         ]
 
-    def run(self, request: AnalysisRequest) -> AnalysisResponse:
-        state: dict[str, object] = {}
-        trace: list[AgentTrace] = []
-        coordination_log: list[CoordinationMessage] = []
-        llm_debug: list[LLMDebugEntry] = []
-
-        for agent in self.pipeline:
+    def _run_agent(
+        self,
+        agent,
+        request: AnalysisRequest,
+        state: dict[str, object],
+    ) -> tuple[dict[str, Any], AgentError | None]:
+        """Run a single agent, returning (result, error). On failure, returns fallback + error."""
+        try:
             result = agent.run({"request": request, "state": state})
-            summary = str(result.pop("summary", ""))
-            raw_messages = result.pop("messages", [])
-            raw_debug = result.pop("llm_debug", [])
-            state.update(result)
-            trace.append(AgentTrace(agent_name=agent.name, summary=summary))
-            coordination_log.extend(CoordinationMessage(**message) for message in raw_messages)
-            llm_debug.extend(LLMDebugEntry(**entry) for entry in raw_debug)
+            return result, None
+        except Exception as exc:
+            logger.exception("Agent %s failed: %s", agent.name, exc)
+            fallback = dict(_FALLBACK_RESULTS.get(agent.name, {"summary": "Agent failed."}))
+            error = AgentError(
+                agent_name=agent.name,
+                error_type=type(exc).__name__,
+                message=str(exc)[:200],
+            )
+            return fallback, error
 
+    def _build_response(
+        self,
+        *,
+        request: AnalysisRequest,
+        state: dict[str, object],
+        trace: list[AgentTrace],
+        coordination_log: list[CoordinationMessage],
+        llm_debug: list[LLMDebugEntry],
+        agent_errors: list[AgentError],
+    ) -> AnalysisResponse:
         response = AnalysisResponse(
             analysis_id=self.repository.create_analysis_id(),
             case_id=self.repository.create_case_id(),
@@ -74,10 +122,93 @@ class LegalOrchestrator:
             coordination_log=coordination_log,
             trace=trace,
             llm_debug=llm_debug,
+            agent_errors=agent_errors,
             created_at=self.repository.now(),
         )
         self.repository.save(request, response)
         return response
+
+    def run(self, request: AnalysisRequest) -> AnalysisResponse:
+        state: dict[str, object] = {}
+        trace: list[AgentTrace] = []
+        coordination_log: list[CoordinationMessage] = []
+        llm_debug: list[LLMDebugEntry] = []
+        agent_errors: list[AgentError] = []
+
+        for agent in self.pipeline:
+            result, error = self._run_agent(agent, request, state)
+            if error:
+                agent_errors.append(error)
+            summary = str(result.pop("summary", ""))
+            raw_messages = result.pop("messages", [])
+            raw_debug = result.pop("llm_debug", [])
+            state.update(result)
+            trace.append(AgentTrace(agent_name=agent.name, summary=summary))
+            coordination_log.extend(CoordinationMessage(**message) for message in raw_messages)
+            llm_debug.extend(LLMDebugEntry(**entry) for entry in raw_debug)
+
+        return self._build_response(
+            request=request,
+            state=state,
+            trace=trace,
+            coordination_log=coordination_log,
+            llm_debug=llm_debug,
+            agent_errors=agent_errors,
+        )
+
+    def run_streaming(self, request: AnalysisRequest) -> Generator[dict[str, Any], None, None]:
+        """Yield one event per agent completion for SSE streaming."""
+        state: dict[str, object] = {}
+        trace: list[AgentTrace] = []
+        coordination_log: list[CoordinationMessage] = []
+        llm_debug: list[LLMDebugEntry] = []
+        agent_errors: list[AgentError] = []
+
+        _stage_keys: dict[str, list[str]] = {
+            "intake_agent": ["matter_type"],
+            "fact_extraction_agent": ["facts"],
+            "legal_retrieval_agent": ["legal_basis"],
+            "legal_reasoning_agent": ["issues", "risk_level", "suggested_actions", "draft_opinion"],
+            "review_agent": ["confidence", "review_notes"],
+        }
+
+        for agent in self.pipeline:
+            result, error = self._run_agent(agent, request, state)
+            if error:
+                agent_errors.append(error)
+            summary = str(result.pop("summary", ""))
+            raw_messages = result.pop("messages", [])
+            raw_debug = result.pop("llm_debug", [])
+            state.update(result)
+            trace.append(AgentTrace(agent_name=agent.name, summary=summary))
+            coordination_log.extend(CoordinationMessage(**message) for message in raw_messages)
+            llm_debug.extend(LLMDebugEntry(**entry) for entry in raw_debug)
+
+            snapshot: dict[str, Any] = {"summary": summary}
+            if error:
+                snapshot["error"] = error.model_dump()
+            for key in _stage_keys.get(agent.name, []):
+                val = state.get(key)
+                if isinstance(val, list):
+                    snapshot[key] = [item.model_dump() if hasattr(item, "model_dump") else item for item in val]
+                elif hasattr(val, "model_dump"):
+                    snapshot[key] = val.model_dump()
+                elif hasattr(val, "value"):
+                    snapshot[key] = val.value
+                else:
+                    snapshot[key] = val
+
+            yield {"event": "stage", "agent": agent.name, "data": snapshot}
+
+        response = self._build_response(
+            request=request,
+            state=state,
+            trace=trace,
+            coordination_log=coordination_log,
+            llm_debug=llm_debug,
+            agent_errors=agent_errors,
+        )
+        yield {"event": "done", "data": response.model_dump()}
 
     def get_analysis(self, analysis_id: str) -> AnalysisResponse | None:
         stored = self.repository.get_analysis(analysis_id)

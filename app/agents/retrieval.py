@@ -18,7 +18,7 @@ class LegalRetrievalAgent(BaseAgent):
         query = context["request"].user_query
         facts = context["state"].get("facts", [])
         retrieval_query = " ".join([query, str(matter_type), *[str(item) for item in facts[:5]]])
-        matched = self.retriever.search(retrieval_query, top_k=4)
+        matched = self.retriever.search(retrieval_query)
         return {
             "legal_basis": matched,
             "messages": [

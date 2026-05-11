@@ -1,12 +1,16 @@
 from __future__ import annotations
 
-import json
+import logging
 import sqlite3
 from datetime import datetime, UTC
 from pathlib import Path
 from uuid import uuid4
 
 from app.models import AnalysisRequest, AnalysisResponse, StoredAnalysis
+
+logger = logging.getLogger(__name__)
+
+_BUSY_TIMEOUT_MS = 5000
 
 
 class AnalysisRepository:
@@ -16,7 +20,11 @@ class AnalysisRepository:
         self._initialize()
 
     def _connect(self) -> sqlite3.Connection:
-        return sqlite3.connect(self.database_path)
+        conn = sqlite3.connect(self.database_path, timeout=_BUSY_TIMEOUT_MS / 1000)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute(f"PRAGMA busy_timeout={_BUSY_TIMEOUT_MS}")
+        conn.execute("PRAGMA foreign_keys=ON")
+        return conn
 
     def _initialize(self) -> None:
         with self._connect() as conn:
@@ -56,7 +64,9 @@ class AnalysisRepository:
 
     def save(self, request: AnalysisRequest, response: AnalysisResponse) -> None:
         created_at = response.created_at.isoformat()
-        with self._connect() as conn:
+        conn = self._connect()
+        try:
+            conn.execute("BEGIN")
             conn.execute(
                 "INSERT INTO cases (case_id, user_query, case_type_hint, created_at) VALUES (?, ?, ?, ?)",
                 (response.case_id, request.user_query, request.case_type_hint, created_at),
@@ -76,6 +86,13 @@ class AnalysisRepository:
                     created_at,
                 ),
             )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            logger.exception("Failed to save analysis %s, rolled back", response.analysis_id)
+            raise
+        finally:
+            conn.close()
 
     def get_analysis(self, analysis_id: str) -> StoredAnalysis | None:
         with self._connect() as conn:

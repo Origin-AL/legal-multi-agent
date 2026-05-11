@@ -2,839 +2,1020 @@ from fastapi.responses import HTMLResponse
 
 
 INDEX_HTML = """<!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="light">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Legal Multi-Agent Studio</title>
+  <title>律智星 · LegalMind</title>
   <style>
     :root {
-      --bg: #f5efe6;
-      --panel: rgba(255, 251, 245, 0.95);
-      --panel-2: #fffaf3;
-      --ink: #1f1a16;
-      --muted: #6f675e;
-      --line: rgba(78, 55, 31, 0.12);
-      --accent: #9e4c2d;
-      --accent-deep: #6f3018;
-      --accent-soft: rgba(158, 76, 45, 0.10);
-      --teal: #224b58;
-      --good: #21664f;
-      --warn: #946411;
-      --bad: #8e2f2f;
-      --shadow: 0 18px 48px rgba(67, 46, 26, 0.10);
-      --radius-xl: 28px;
-      --radius-lg: 20px;
-      --radius-md: 14px;
-      --mono: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
-      --sans: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Segoe UI", sans-serif;
+      --bg: #faf7f2;
+      --bg-aside: #f3ede4;
+      --bg-chat: #faf7f2;
+      --bg-bubble-ai: #f0ebe2;
+      --bg-bubble-user: #c06030;
+      --bg-input: #ffffff;
+      --bg-card: #ffffff;
+      --bg-hover: #f0ebe2;
+      --text: #2c2418;
+      --text-secondary: #8a7e6e;
+      --text-user: #ffffff;
+      --border: #e4dbd0;
+      --accent: #c06030;
+      --accent-light: rgba(192, 96, 48, 0.1);
+      --risk-low: #3d8b37;
+      --risk-low-bg: rgba(61, 139, 55, 0.1);
+      --risk-med: #c08020;
+      --risk-med-bg: rgba(192, 128, 32, 0.12);
+      --risk-high: #c03030;
+      --risk-high-bg: rgba(192, 48, 48, 0.1);
+      --code-bg: #f5f0e8;
+      --shadow: 0 1px 3px rgba(80, 50, 20, 0.06);
+      --sidebar-w: 240px;
     }
-    * { box-sizing: border-box; }
+    [data-theme="dark"] {
+      --bg: #1a1614;
+      --bg-aside: #211d1a;
+      --bg-chat: #1a1614;
+      --bg-bubble-ai: #2a2420;
+      --bg-bubble-user: #c06030;
+      --bg-input: #242018;
+      --bg-card: #242018;
+      --bg-hover: #302a24;
+      --text: #e8e0d6;
+      --text-secondary: #a09686;
+      --text-user: #ffffff;
+      --border: #3a3228;
+      --accent: #d07040;
+      --accent-light: rgba(208, 112, 64, 0.15);
+      --code-bg: #1a1a1a;
+      --shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: var(--sans);
-      color: var(--ink);
-      background:
-        radial-gradient(circle at top left, rgba(158, 76, 45, 0.12), transparent 26%),
-        linear-gradient(160deg, #f7f1e7 0%, #efe4d3 55%, #ece0d0 100%);
+      font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
     }
 
-    /* ── header ── */
-    .header {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 20px 20px 0;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-    }
-    .header h1 {
-      margin: 0;
-      font-size: 22px;
-      letter-spacing: -0.03em;
-    }
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .health-dot {
-      width: 8px; height: 8px;
-      border-radius: 999px;
-      background: var(--muted);
+    /* sidebar */
+    .sidebar {
+      width: var(--sidebar-w);
+      min-width: var(--sidebar-w);
       flex-shrink: 0;
-    }
-    .health-dot.ok { background: var(--good); }
-    .health-dot.err { background: var(--bad); }
-    .health-text {
-      font-size: 12px;
-      color: var(--muted);
-    }
-    .fetch-row {
+      background: var(--bg-aside);
+      border-right: 1px solid var(--border);
       display: flex;
-      gap: 8px;
-      align-items: center;
+      flex-direction: column;
+      height: 100vh;
     }
-    .fetch-row input {
-      width: 260px;
-      border: 1px solid rgba(78, 55, 31, 0.14);
+    .sidebar-head {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .new-chat-btn {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
       border-radius: 10px;
-      padding: 7px 10px;
-      background: var(--panel);
+      background: var(--bg-chat);
+      color: var(--text);
       font: inherit;
       font-size: 13px;
-      color: var(--ink);
+      font-weight: 600;
+      cursor: pointer;
+      text-align: left;
+    }
+    .new-chat-btn:hover { background: var(--bg-hover); }
+    .history-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+    .history-item {
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .history-item:hover { background: var(--bg-hover); color: var(--text); }
+    .history-item.active { background: var(--accent-light); color: var(--accent); }
+    .sidebar-foot {
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .sidebar-foot input {
+      width: 100%;
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg-input);
+      color: var(--text);
+      font: inherit;
+      font-size: 12px;
       outline: none;
     }
-    .fetch-row input:focus {
-      border-color: rgba(158, 76, 45, 0.5);
+    .sidebar-foot input:focus { border-color: var(--accent); }
+    .sidebar-foot-row {
+      display: flex;
+      gap: 6px;
     }
+    .sidebar-foot-row button {
+      flex: 1;
+      padding: 6px 0;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg-chat);
+      color: var(--text-secondary);
+      font: inherit;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .sidebar-foot-row button:hover { background: var(--bg-hover); color: var(--text); }
+    .health-dot {
+      width: 6px; height: 6px;
+      border-radius: 999px;
+      display: inline-block;
+      margin-right: 4px;
+      vertical-align: middle;
+      background: #888;
+    }
+    .health-dot.ok { background: #22c55e; }
+    .health-dot.err { background: #ef4444; }
 
-    /* ── layout ── */
-    .layout {
-      max-width: 1200px;
-      margin: 16px auto 36px;
-      padding: 0 12px;
-      display: grid;
-      grid-template-columns: 380px minmax(0, 1fr);
-      gap: 16px;
-      align-items: start;
+    /* main */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      min-width: 0;
     }
-
-    /* ── panels ── */
-    .panel {
-      border: 1px solid var(--line);
-      border-radius: var(--radius-xl);
-      background: var(--panel);
-      box-shadow: var(--shadow);
-    }
-    .panel-head {
-      padding: 16px 20px;
-      border-bottom: 1px solid var(--line);
+    .main-head {
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: space-between;
+      background: var(--bg-chat);
     }
-    .panel-head h2 {
-      margin: 0;
-      font-size: 17px;
+    .main-head h2 { font-size: 15px; font-weight: 600; }
+    .theme-btn {
+      width: 32px; height: 32px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg-chat);
+      color: var(--text-secondary);
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .theme-btn:hover { background: var(--bg-hover); }
+    .menu-btn {
+      display: none;
+      width: 32px; height: 32px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg-chat);
+      color: var(--text-secondary);
+      font-size: 18px;
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* chat area */
+    .chat-area {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    .chat-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 0;
+    }
+    .chat-container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* welcome */
+    .welcome {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 60vh;
+      text-align: center;
+      padding: 40px 20px;
+    }
+    .welcome h1 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 8px;
       letter-spacing: -0.02em;
     }
-    .tag {
-      display: inline-flex;
-      padding: 5px 10px;
-      border-radius: 999px;
-      background: var(--accent-soft);
-      color: var(--accent);
-      font-size: 11px;
-      font-weight: 800;
+    .welcome p {
+      color: var(--text-secondary);
+      font-size: 14px;
+      margin-bottom: 32px;
+      max-width: 420px;
+      line-height: 1.6;
     }
-    .panel-body {
-      padding: 18px 20px 20px;
+    .quick-grid {
       display: grid;
-      gap: 14px;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      max-width: 520px;
+      width: 100%;
     }
+    .quick-card {
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--bg-card);
+      text-align: left;
+      cursor: pointer;
+      font: inherit;
+      color: var(--text);
+    }
+    .quick-card:hover { border-color: var(--accent); }
+    .quick-card .qc-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+    .quick-card .qc-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.4; }
 
-    /* ── form fields ── */
-    .field { display: grid; gap: 6px; }
-    .field label {
-      color: var(--muted);
-      font-size: 12px;
+    /* messages */
+    .msg { display: flex; gap: 12px; }
+    .msg.user { flex-direction: row-reverse; }
+    .msg-avatar {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
       font-weight: 700;
     }
-    input, textarea {
+    .msg.user .msg-avatar {
+      background: linear-gradient(135deg, #e8d5c4, #d4b896);
+      color: #6b4a2e;
+      font-size: 16px;
+    }
+    .msg.ai .msg-avatar {
+      background: linear-gradient(135deg, var(--accent), #a04820);
+      color: #fff;
+      font-size: 18px;
+    }
+    .msg-body { max-width: 820px; min-width: 0; }
+    .msg.user .msg-body { text-align: right; }
+    .msg-bubble {
+      display: inline-block;
+      padding: 12px 16px;
+      border-radius: 14px;
+      font-size: 14px;
+      line-height: 1.7;
+      text-align: left;
+    }
+    .msg.user .msg-bubble {
+      background: var(--bg-bubble-user);
+      color: var(--text-user);
+      border-radius: 14px 14px 4px 14px;
+    }
+    .msg.ai .msg-bubble {
+      background: var(--bg-bubble-ai);
+      color: var(--text);
+      border-radius: 14px 14px 14px 4px;
       width: 100%;
-      border: 1px solid rgba(78, 55, 31, 0.14);
+    }
+
+    /* report cards inside ai bubble */
+    .report-section {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-top: 10px;
+      overflow: hidden;
+    }
+    .report-section:first-child { margin-top: 0; }
+    .rs-head {
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-card);
+      user-select: none;
+    }
+    .rs-head:hover { background: var(--bg-hover); }
+    .rs-head::after {
+      content: "";
+      width: 0; height: 0;
+      border-left: 4px solid transparent;
+      border-right: 4px solid transparent;
+      border-top: 5px solid var(--text-secondary);
+      flex-shrink: 0;
+      margin-left: 8px;
+    }
+    .rs-head.open::after { border-top: none; border-bottom: 5px solid var(--text-secondary); }
+    .rs-body { padding: 12px 14px; display: none; }
+    .rs-body.open { display: block; }
+    .rs-body p, .rs-body li {
+      font-size: 13px;
+      line-height: 1.7;
+      color: var(--text-secondary);
+    }
+    .rs-body ul { padding-left: 18px; }
+    .rs-body li + li { margin-top: 4px; }
+
+    /* opinion block */
+    .opinion-block {
+      padding: 14px 16px;
+      background: linear-gradient(135deg, #8b4513, #a0522d);
+      border-radius: 10px;
+      color: #fdf5e6;
+      margin-bottom: 10px;
+    }
+    [data-theme="dark"] .opinion-block {
+      background: linear-gradient(135deg, #5c2e0e, #7a3b14);
+    }
+    .opinion-block .ob-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .opinion-block .ob-title { font-size: 14px; font-weight: 700; }
+    .opinion-block .ob-text { font-size: 13px; line-height: 1.8; white-space: pre-wrap; }
+
+    /* tags */
+    .tag {
+      display: inline-flex;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .tag.low { background: var(--risk-low-bg); color: var(--risk-low); }
+    .tag.medium { background: var(--risk-med-bg); color: var(--risk-med); }
+    .tag.high { background: var(--risk-high-bg); color: var(--risk-high); }
+    .tag.on-dark { background: rgba(255,255,255,0.18); color: #fdf5e6; }
+
+    /* issue / basis items */
+    .analysis-item {
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-top: 8px;
+    }
+    .analysis-item:first-child { margin-top: 0; }
+    .analysis-item h4 { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+    .analysis-item p { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+    .analysis-item .ai-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+    .analysis-item .ai-token {
+      font-size: 11px;
+      font-family: "JetBrains Mono", Consolas, monospace;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: var(--accent-light);
+      color: var(--accent);
+    }
+
+    /* raw json */
+    .raw-toggle {
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      border: none;
+      background: none;
+      font: inherit;
+      padding: 4px 0;
+    }
+    .raw-toggle:hover { color: var(--accent); }
+    .raw-json {
+      display: none;
+      margin-top: 8px;
+      padding: 12px;
+      border-radius: 8px;
+      background: var(--code-bg);
+      overflow: auto;
+      max-height: 300px;
+    }
+    .raw-json pre {
+      font-family: "JetBrains Mono", Consolas, monospace;
+      font-size: 11px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: var(--text-secondary);
+    }
+
+    /* loading */
+    .msg-loading .msg-bubble {
+      display: flex;
+      gap: 4px;
+      padding: 16px 20px;
+    }
+    .msg-loading .dot {
+      width: 6px; height: 6px;
+      border-radius: 999px;
+      background: var(--text-secondary);
+    }
+
+    /* input bar */
+    .input-bar {
+      padding: 14px 16px;
+      border-top: 1px solid var(--border);
+      background: var(--bg-chat);
+    }
+    .input-inner {
+      max-width: 900px;
+      margin: 0 auto;
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+    }
+    .input-inner textarea {
+      flex: 1;
+      padding: 11px 14px;
+      border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 11px 12px;
-      background: var(--panel-2);
-      color: var(--ink);
+      background: var(--bg-input);
+      color: var(--text);
       font: inherit;
       font-size: 14px;
       outline: none;
-      transition: border-color 160ms, box-shadow 160ms;
+      resize: none;
+      min-height: 44px;
+      max-height: 140px;
+      line-height: 1.5;
     }
-    input:focus, textarea:focus {
-      border-color: rgba(158, 76, 45, 0.55);
-      box-shadow: 0 0 0 3px rgba(158, 76, 45, 0.10);
-    }
-    textarea {
-      min-height: 90px;
-      resize: vertical;
-      line-height: 1.6;
-    }
-
-    /* ── materials ── */
-    .materials { display: grid; gap: 10px; }
-    .material {
-      border: 1px solid rgba(78, 55, 31, 0.10);
-      border-radius: 14px;
-      padding: 12px;
-      background: rgba(255,255,255,0.58);
-      display: grid;
-      gap: 8px;
-    }
-    .material-top {
+    .input-inner textarea:focus { border-color: var(--accent); }
+    .send-btn {
+      width: 44px; height: 44px;
+      border: none;
+      border-radius: 12px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 18px;
+      cursor: pointer;
+      flex-shrink: 0;
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      justify-content: center;
     }
-    .material-index {
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 700;
-    }
-    .remove-btn {
-      appearance: none;
-      border: 0;
-      border-radius: 8px;
-      padding: 5px 10px;
-      background: rgba(142, 47, 47, 0.10);
-      color: var(--bad);
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-    }
-    .remove-btn:hover { background: rgba(142, 47, 47, 0.18); }
-    .remove-btn:disabled { opacity: 0.4; cursor: default; }
+    .send-btn:hover { opacity: 0.9; }
+    .send-btn:disabled { opacity: 0.4; cursor: default; }
 
-    /* ── buttons ── */
-    .actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-    button {
-      appearance: none;
-      border: 0;
-      border-radius: 12px;
-      padding: 10px 14px;
-      font: inherit;
-      font-size: 13px;
-      font-weight: 800;
-      cursor: pointer;
-      transition: transform 160ms, opacity 160ms;
-    }
-    button:hover { transform: translateY(-1px); }
-    button:disabled { opacity: 0.6; cursor: wait; transform: none; }
-    .btn-primary {
-      background: linear-gradient(135deg, var(--accent), var(--accent-deep));
-      color: #fff8f2;
-    }
-    .btn-secondary {
-      background: rgba(255,255,255,0.70);
-      color: var(--ink);
-      border: 1px solid rgba(78, 55, 31, 0.10);
-    }
-    .btn-ghost {
-      background: rgba(34, 75, 88, 0.08);
-      color: var(--teal);
-    }
+    /* scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
-    /* ── status ── */
-    .status {
-      min-height: 40px;
-      padding: 10px 12px;
-      border-radius: 12px;
-      background: rgba(255,255,255,0.48);
-      border: 1px dashed rgba(78, 55, 31, 0.14);
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.6;
-      white-space: pre-wrap;
+    /* mobile */
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 99;
     }
-
-    /* ── report ── */
-    .report { display: grid; gap: 14px; }
-    .report-banner {
-      padding: 18px 20px;
-      border-radius: 22px;
-      background: linear-gradient(135deg, rgba(34, 75, 88, 0.95), rgba(26, 54, 64, 0.92));
-      color: #eef4f6;
-      display: grid;
-      gap: 12px;
-    }
-    .report-banner h3 {
-      margin: 0;
-      font-size: 22px;
-      letter-spacing: -0.04em;
-    }
-    .report-meta {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 8px;
-    }
-    .meta-box {
-      padding: 12px;
-      border-radius: 14px;
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.10);
-    }
-    .meta-box .k {
-      font-size: 10px;
-      color: rgba(238,244,246,0.72);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-    .meta-box .v {
-      margin-top: 6px;
-      font-size: 16px;
-      font-weight: 800;
-      word-break: break-word;
-    }
-
-    /* ── sections ── */
-    .section {
-      border: 1px solid rgba(78, 55, 31, 0.10);
-      border-radius: 18px;
-      background: rgba(255,255,255,0.64);
-      overflow: hidden;
-    }
-    .section-head {
-      padding: 14px 18px;
-      border-bottom: 1px solid rgba(78, 55, 31, 0.08);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .section-head h4 { margin: 0; font-size: 14px; }
-    .section-body {
-      padding: 16px 18px;
-      display: grid;
-      gap: 10px;
-    }
-    .two-col {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 14px;
-    }
-    .lede {
-      white-space: pre-wrap;
-      line-height: 1.8;
-      font-size: 14px;
-      color: #342b23;
-    }
-    .item {
-      padding: 12px;
-      border-radius: 14px;
-      background: rgba(255,255,255,0.68);
-      border: 1px solid rgba(78, 55, 31, 0.08);
-    }
-    .item h5 { margin: 0 0 6px; font-size: 14px; }
-    .item p {
-      margin: 0;
-      color: var(--muted);
-      line-height: 1.7;
-      white-space: pre-wrap;
-      word-break: break-word;
-      font-size: 13px;
-    }
-    .list {
-      margin: 0;
-      padding-left: 18px;
-      color: var(--muted);
-      display: grid;
-      gap: 6px;
-      line-height: 1.7;
-      font-size: 13px;
-    }
-    .tag.low { background: rgba(33, 102, 79, 0.12); color: var(--good); }
-    .tag.medium { background: rgba(148, 100, 17, 0.12); color: var(--warn); }
-    .tag.high { background: rgba(142, 47, 47, 0.12); color: var(--bad); }
-    .token-row {
-      margin-top: 8px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-    }
-    .token {
-      padding: 4px 8px;
-      border-radius: 999px;
-      background: rgba(34, 75, 88, 0.08);
-      color: var(--teal);
-      font-size: 11px;
-      font-family: var(--mono);
-    }
-
-    /* ── details / accordion ── */
-    details {
-      border: 1px solid rgba(78, 55, 31, 0.10);
-      border-radius: 16px;
-      background: rgba(255,255,255,0.55);
-      overflow: hidden;
-    }
-    details summary {
-      list-style: none;
-      cursor: pointer;
-      padding: 12px 16px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-weight: 800;
-      font-size: 14px;
-    }
-    details summary::-webkit-details-marker { display: none; }
-    .summary-meta {
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 600;
-    }
-    .debug-list {
-      padding: 0 16px 14px;
-      display: grid;
-      gap: 10px;
-    }
-    pre {
-      margin: 0;
-      padding: 14px;
-      border-radius: 12px;
-      background: #1d1814;
-      color: #f7eedb;
-      overflow: auto;
-      white-space: pre-wrap;
-      word-break: break-word;
-      line-height: 1.6;
-      font-family: var(--mono);
-      font-size: 12px;
-    }
-    .empty {
-      padding: 16px;
-      border-radius: 16px;
-      border: 1px dashed rgba(78, 55, 31, 0.16);
-      background: rgba(255,255,255,0.42);
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.7;
-    }
-
-    @media (max-width: 960px) {
-      .layout { grid-template-columns: 1fr; }
-    }
-    @media (max-width: 720px) {
-      .two-col, .report-meta { grid-template-columns: 1fr; }
-      .header { flex-direction: column; align-items: flex-start; }
-      .fetch-row input { width: 100%; }
+    @media (max-width: 768px) {
+      .sidebar {
+        position: fixed;
+        left: -100%;
+        top: 0;
+        bottom: 0;
+        z-index: 100;
+        transition: left 0.2s;
+      }
+      .sidebar.open { left: 0; }
+      .sidebar-overlay.open { display: block; }
+      .menu-btn { display: flex; }
+      .quick-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
 
-  <!-- header bar -->
-  <header class="header">
-    <h1>法律多 Agent 工作台</h1>
-    <div class="header-right">
-      <div class="fetch-row">
-        <input id="analysisIdInput" placeholder="输入 analysis_id 回查..." />
-        <button id="fetchBtn" class="btn-secondary" type="button">加载</button>
-      </div>
-      <div id="healthDot" class="health-dot"></div>
-      <span id="healthText" class="health-text">检查中...</span>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-head">
+      <button class="new-chat-btn" id="newChatBtn">+ 新建对话</button>
     </div>
-  </header>
-
-  <div class="layout">
-
-    <!-- left: input panel -->
-    <section class="panel">
-      <div class="panel-head">
-        <h2>案件输入</h2>
-        <span class="tag">POST /analysis</span>
+    <div class="history-list" id="historyList"></div>
+    <div class="sidebar-foot">
+      <input id="historyId" placeholder="输入 report_id 回查..." />
+      <div class="sidebar-foot-row">
+        <button id="historyBtn">加载报告</button>
+        <button id="healthBtn"><span id="healthDot" class="health-dot"></span>检查状态</button>
       </div>
-      <div class="panel-body">
-        <div class="field">
-          <label for="userQuery">法律问题</label>
-          <textarea id="userQuery" placeholder="例如：请审查合同解除条款和违约责任风险"></textarea>
-        </div>
-        <div class="field">
-          <label for="caseTypeHint">案件类型提示 · 可选</label>
-          <input id="caseTypeHint" placeholder="例如 contract_review" />
-        </div>
-        <div class="field">
-          <label>材料列表</label>
-          <div id="materialsList" class="materials"></div>
-          <div class="actions">
-            <button id="addMaterialBtn" class="btn-ghost" type="button">+ 新增材料</button>
+    </div>
+  </aside>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <div class="main">
+    <div class="main-head">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button class="menu-btn" id="menuBtn">☰</button>
+        <h2>律智星 · LegalMind</h2>
+      </div>
+      <button class="theme-btn" id="themeBtn" title="切换主题">☾</button>
+    </div>
+
+    <div class="chat-area">
+      <div class="chat-scroll" id="chatScroll">
+        <div class="chat-container" id="chatContainer">
+          <div id="welcome" class="welcome">
+            <h1>律智星</h1>
+            <p style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">LegalMind · 法律智能分析助手</p>
+            <p>输入您遇到的法律问题，系统将自动分析风险、检索相关法条并提供初步建议。</p>
+            <div class="quick-grid">
+              <button class="quick-card" data-q="合同违约金约定过高，可以要求法院调减吗？" data-label="合同纠纷">
+                <div class="qc-title">违约金过高怎么办？</div>
+                <div class="qc-desc">了解违约金调减的法律依据和适用条件</div>
+              </button>
+              <button class="quick-card" data-q="公司单方面解除劳动合同，员工可以获得多少经济补偿？" data-label="劳动争议">
+                <div class="qc-title">劳动解除补偿</div>
+                <div class="qc-desc">计算经济补偿金的法定标准</div>
+              </button>
+              <button class="quick-card" data-q="合同中约定的解除条件不明确，一方想解除合同应该怎么做？" data-label="合同纠纷">
+                <div class="qc-title">合同解除条件</div>
+                <div class="qc-desc">解除权的行使条件和程序要求</div>
+              </button>
+              <button class="quick-card" data-q="企业未给员工缴纳社会保险，员工可以主张哪些权利？" data-label="合规审查">
+                <div class="qc-title">社保权益维护</div>
+                <div class="qc-desc">未缴社保的法律后果和维权途径</div>
+              </button>
+            </div>
           </div>
         </div>
-        <div class="actions">
-          <button id="analyzeBtn" class="btn-primary" type="button">开始分析</button>
-          <button id="fillBtn" class="btn-secondary" type="button">载入示例</button>
-          <button id="clearBtn" class="btn-secondary" type="button">清空</button>
-        </div>
-        <div id="statusBox" class="status">就绪。填写案件后点击“开始分析”。</div>
       </div>
-    </section>
+    </div>
 
-    <!-- right: report panel -->
-    <section class="panel">
-      <div class="panel-head">
-        <h2>分析报告</h2>
-        <span class="tag">GET /analysis/{id}</span>
+    <div class="input-bar">
+      <div class="input-inner">
+        <textarea id="queryInput" rows="1" placeholder="描述您遇到的法律问题..."></textarea>
+        <button class="send-btn" id="sendBtn" title="发送">↑</button>
       </div>
-      <div class="panel-body">
-        <div id="emptyState" class="empty">还没有报告。运行一次分析，或通过右上角 analysis_id 取回历史结果。</div>
-
-        <div id="reportShell" class="report" hidden>
-          <section class="report-banner">
-            <h3 id="reportTitle">分析报告</h3>
-            <div id="reportKpis" class="report-meta"></div>
-          </section>
-
-          <section class="section">
-            <div class="section-head">
-              <h4>核心意见</h4>
-              <span id="headlineRisk" class="tag">medium</span>
-            </div>
-            <div class="section-body">
-              <div id="draftOpinion" class="lede"></div>
-            </div>
-          </section>
-
-          <div class="two-col">
-            <section class="section">
-              <div class="section-head"><h4>事实提取</h4></div>
-              <div id="factsList" class="section-body"></div>
-            </section>
-            <section class="section">
-              <div class="section-head"><h4>建议动作</h4></div>
-              <div class="section-body"><ul id="actionsList" class="list"></ul></div>
-            </section>
-          </div>
-
-          <section class="section">
-            <div class="section-head">
-              <h4>问题项与风险</h4>
-            </div>
-            <div id="issuesList" class="section-body"></div>
-          </section>
-
-          <div class="two-col">
-            <section class="section">
-              <div class="section-head"><h4>法律依据</h4></div>
-              <div id="basisList" class="section-body"></div>
-            </section>
-            <section class="section">
-              <div class="section-head"><h4>资深复核</h4></div>
-              <div class="section-body"><ul id="reviewList" class="list"></ul></div>
-            </section>
-          </div>
-
-          <details>
-            <summary>
-              <span>Agent 协调日志</span>
-              <span class="summary-meta">流转记录</span>
-            </summary>
-            <div id="coordinationList" class="debug-list"></div>
-          </details>
-
-          <details>
-            <summary>
-              <span>Agent 执行轨迹</span>
-              <span class="summary-meta">节点摘要</span>
-            </summary>
-            <div id="traceList" class="debug-list"></div>
-          </details>
-
-          <details id="debugPanel">
-            <summary>
-              <span>LLM 调试面板</span>
-              <span id="debugMeta" class="summary-meta">0 entries</span>
-            </summary>
-            <div id="debugList" class="debug-list"></div>
-          </details>
-
-          <details>
-            <summary>
-              <span>原始 JSON</span>
-              <span class="summary-meta">完整响应</span>
-            </summary>
-            <div class="debug-list"><pre id="rawJson"></pre></div>
-          </details>
-        </div>
-      </div>
-    </section>
+    </div>
   </div>
 
-  <template id="materialTemplate">
-    <article class="material">
-      <div class="material-top">
-        <span class="material-index">材料 1</span>
-        <button class="remove-btn" type="button">删除</button>
-      </div>
-      <div class="field">
-        <label>标题</label>
-        <input data-role="title" placeholder="例如：服务合同" />
-      </div>
-      <div class="field">
-        <label>内容</label>
-        <textarea data-role="content" placeholder="粘贴材料正文"></textarea>
-      </div>
-    </article>
-  </template>
-
   <script>
-    const example = {
-      user_query: "请审查这份合同中的解除条款和违约责任风险，并说明解除条件是否明确、违约金是否可能被调减。",
-      case_type_hint: "contract_review",
-      materials: [
-        {
-          title: "服务合同",
-          content: "甲方委托乙方提供服务。若乙方逾期15日未完成交付，甲方可以解除合同。违约金按合同总价的30%计算。"
-        },
-        {
-          title: "往来记录",
-          content: "乙方在第10天表示可能延期，但未提交明确补救方案。"
-        }
-      ]
+    var $ = function(id) { return document.getElementById(id); };
+    var el = {
+      sidebar: $("sidebar"), overlay: $("sidebarOverlay"),
+      menuBtn: $("menuBtn"), newChatBtn: $("newChatBtn"),
+      historyList: $("historyList"), historyId: $("historyId"),
+      historyBtn: $("historyBtn"), healthDot: $("healthDot"),
+      healthBtn: $("healthBtn"), themeBtn: $("themeBtn"),
+      chatScroll: $("chatScroll"), chatContainer: $("chatContainer"),
+      welcome: $("welcome"), queryInput: $("queryInput"), sendBtn: $("sendBtn")
     };
 
-    const el = {
-      userQuery: document.getElementById("userQuery"),
-      caseTypeHint: document.getElementById("caseTypeHint"),
-      materialsList: document.getElementById("materialsList"),
-      materialTemplate: document.getElementById("materialTemplate"),
-      addMaterialBtn: document.getElementById("addMaterialBtn"),
-      analyzeBtn: document.getElementById("analyzeBtn"),
-      fillBtn: document.getElementById("fillBtn"),
-      clearBtn: document.getElementById("clearBtn"),
-      fetchBtn: document.getElementById("fetchBtn"),
-      analysisIdInput: document.getElementById("analysisIdInput"),
-      statusBox: document.getElementById("statusBox"),
-      healthDot: document.getElementById("healthDot"),
-      healthText: document.getElementById("healthText"),
-      emptyState: document.getElementById("emptyState"),
-      reportShell: document.getElementById("reportShell"),
-      reportTitle: document.getElementById("reportTitle"),
-      reportKpis: document.getElementById("reportKpis"),
-      headlineRisk: document.getElementById("headlineRisk"),
-      draftOpinion: document.getElementById("draftOpinion"),
-      factsList: document.getElementById("factsList"),
-      actionsList: document.getElementById("actionsList"),
-      issuesList: document.getElementById("issuesList"),
-      basisList: document.getElementById("basisList"),
-      reviewList: document.getElementById("reviewList"),
-      coordinationList: document.getElementById("coordinationList"),
-      traceList: document.getElementById("traceList"),
-      debugMeta: document.getElementById("debugMeta"),
-      debugList: document.getElementById("debugList"),
-      rawJson: document.getElementById("rawJson")
-    };
+    var sessions = [];
+    var currentSession = null;
 
-    function escapeHtml(value) {
-      return String(value ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#39;");
+    function esc(v) {
+      return String(v == null ? "" : v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
     }
 
-    function setStatus(message, tone) {
-      el.statusBox.textContent = message;
-      const colors = { muted: "var(--muted)", info: "var(--teal)", good: "var(--good)", error: "var(--bad)" };
-      el.statusBox.style.color = colors[tone] || colors.muted;
+    // theme
+    function getTheme() { return localStorage.getItem("theme") || "light"; }
+    function setTheme(t) {
+      document.documentElement.setAttribute("data-theme", t);
+      localStorage.setItem("theme", t);
+      el.themeBtn.textContent = t === "dark" ? "☀" : "☾";
     }
+    setTheme(getTheme());
+    el.themeBtn.addEventListener("click", function() {
+      setTheme(getTheme() === "dark" ? "light" : "dark");
+    });
 
-    function setHealth(ok) {
-      el.healthDot.className = "health-dot " + (ok ? "ok" : "err");
-      el.healthText.textContent = ok ? "服务正常" : "服劣异常";
+    // sidebar
+    function toggleSidebar(open) {
+      var isOpen = el.sidebar.classList.contains("open");
+      var next = open !== undefined ? open : !isOpen;
+      el.sidebar.classList.toggle("open", next);
+      el.overlay.classList.toggle("open", next);
     }
+    el.menuBtn.addEventListener("click", function() { toggleSidebar(); });
+    el.overlay.addEventListener("click", function() { toggleSidebar(false); });
 
-    function setBusy(isBusy, message) {
-      el.analyzeBtn.disabled = isBusy;
-      el.fetchBtn.disabled = isBusy;
-      if (message) setStatus(message, isBusy ? "info" : "muted");
+    // history
+    function loadSessions() {
+      try { sessions = JSON.parse(localStorage.getItem("legal_sessions") || "[]"); } catch(e) { sessions = []; }
     }
-
-    function createMaterialCard(data) {
-      data = data || {};
-      const frag = el.materialTemplate.content.cloneNode(true);
-      const card = frag.querySelector(".material");
-      frag.querySelector('[data-role="title"]').value = data.title || "";
-      frag.querySelector('[data-role="content"]').value = data.content || "";
-      frag.querySelector(".remove-btn").addEventListener("click", function() {
-        card.remove();
-        refreshMaterialLabels();
-      });
-      el.materialsList.appendChild(frag);
-      refreshMaterialLabels();
+    function saveSessions() {
+      localStorage.setItem("legal_sessions", JSON.stringify(sessions.slice(0, 30)));
     }
-
-    function refreshMaterialLabels() {
-      const children = el.materialsList.children;
-      for (let i = 0; i < children.length; i++) {
-        children[i].querySelector(".material-index").textContent = "材料 " + (i + 1);
-        children[i].querySelector(".remove-btn").disabled = children.length === 1;
-      }
-    }
-
-    function loadExample() {
-      el.userQuery.value = example.user_query;
-      el.caseTypeHint.value = example.case_type_hint;
-      el.materialsList.innerHTML = "";
-      example.materials.forEach(function(item) { createMaterialCard(item); });
-      setStatus("已加载示例数据。", "good");
-    }
-
-    function collectPayload() {
-      var materials = [];
-      var nodes = el.materialsList.children;
-      for (var i = 0; i < nodes.length; i++) {
-        var t = nodes[i].querySelector('[data-role="title"]').value.trim();
-        var c = nodes[i].querySelector('[data-role="content"]').value.trim();
-        if (c) materials.push({ title: t, content: c });
-      }
-      return {
-        user_query: el.userQuery.value.trim(),
-        case_type_hint: el.caseTypeHint.value.trim() || null,
-        materials: materials
-      };
-    }
-
-    async function requestJson(url, options) {
-      var response = await fetch(url, options);
-      var text = await response.text();
-      var parsed = null;
-      try { parsed = text ? JSON.parse(text) : null; } catch(e) { parsed = { raw: text }; }
-      if (!response.ok) {
-        var detail = parsed && parsed.detail ? parsed.detail : text || "HTTP " + response.status;
-        throw new Error(detail);
-      }
-      return parsed;
-    }
-
-    function renderList(container, items, renderer, emptyText) {
-      if (!items || !items.length) {
-        container.innerHTML = '<div class="empty">' + escapeHtml(emptyText) + '</div>';
-        return;
-      }
-      container.innerHTML = items.map(renderer).join("");
-    }
-
-    function renderSimpleList(container, items, emptyText) {
-      if (!items || !items.length) {
-        container.innerHTML = '<div class="empty">' + escapeHtml(emptyText) + '</div>';
-        return;
-      }
-      container.innerHTML = '<ul class="list">' + items.map(function(item) {
-        return '<li>' + escapeHtml(item) + '</li>';
-      }).join("") + '</ul>';
-    }
-
-    function renderMeta(data) {
-      var items = [
-        ["analysis_id", data.analysis_id],
-        ["matter_type", data.matter_type],
-        ["risk_level", data.risk_level],
-        ["confidence", data.confidence]
-      ];
-      el.reportKpis.innerHTML = items.map(function(pair) {
-        return '<div class="meta-box"><div class="k">' + escapeHtml(pair[0]) + '</div><div class="v">' + escapeHtml(pair[1] || "-") + '</div></div>';
+    function renderHistory() {
+      el.historyList.innerHTML = sessions.map(function(s, i) {
+        var cls = currentSession === i ? " active" : "";
+        return '<div class="history-item' + cls + '" data-i="' + i + '">' + esc(s.title) + '</div>';
       }).join("");
+      el.historyList.querySelectorAll(".history-item").forEach(function(item) {
+        item.addEventListener("click", function() {
+          switchSession(parseInt(item.getAttribute("data-i")));
+        });
+      });
+    }
+    function switchSession(index) {
+      currentSession = index;
+      var s = sessions[index];
+      el.welcome.style.display = "none";
+      el.chatContainer.innerHTML = "";
+      s.messages.forEach(function(m) {
+        if (m.role === "user") appendUserMsg(m.text, false);
+        else appendAiMsg(m.data, false);
+      });
+      renderHistory();
+      toggleSidebar(false);
+      scrollToBottom();
+    }
+    function startNewChat() {
+      currentSession = null;
+      el.chatContainer.innerHTML = "";
+      el.welcome.style.display = "";
+      el.chatContainer.appendChild(el.welcome);
+      renderHistory();
+      toggleSidebar(false);
+    }
+    el.newChatBtn.addEventListener("click", startNewChat);
+
+    // health
+    async function checkHealth() {
+      try {
+        await fetch("/health").then(function(r) { return r.json(); });
+        el.healthDot.className = "health-dot ok";
+      } catch(e) {
+        el.healthDot.className = "health-dot err";
+      }
+    }
+    el.healthBtn.addEventListener("click", checkHealth);
+
+    // report fetch
+    el.historyBtn.addEventListener("click", async function() {
+      var id = el.historyId.value.trim();
+      if (!id) return;
+      el.historyBtn.disabled = true;
+      try {
+        var resp = await fetch("/analysis/" + encodeURIComponent(id));
+        if (!resp.ok) throw new Error((await resp.json()).detail || resp.statusText);
+        var data = await resp.json();
+        if (currentSession === null) {
+          sessions.unshift({ title: "[回查] " + id.slice(0,8), messages: [] });
+          currentSession = 0;
+          el.welcome.style.display = "none";
+          el.chatContainer.innerHTML = "";
+        }
+        appendAiMsg(data, true);
+        saveSessions();
+        renderHistory();
+      } catch(e) { alert("加载失败：" + e.message); }
+      finally { el.historyBtn.disabled = false; }
+    });
+
+    // textarea auto-height
+    function setTextareaHeight() {
+      el.queryInput.style.height = "auto";
+      el.queryInput.style.height = Math.min(el.queryInput.scrollHeight, 140) + "px";
+    }
+    el.queryInput.addEventListener("input", setTextareaHeight);
+
+    // send
+    function appendUserMsg(text, save) {
+      var div = document.createElement("div");
+      div.className = "msg user";
+      div.innerHTML = '<div class="msg-avatar">你</div><div class="msg-body"><div class="msg-bubble">' + esc(text) + '</div></div>';
+      el.chatContainer.appendChild(div);
+      if (save !== false && currentSession !== null) {
+        sessions[currentSession].messages.push({ role: "user", text: text });
+      }
     }
 
-    function renderReport(data) {
-      el.emptyState.hidden = true;
-      el.reportShell.hidden = false;
-      el.analysisIdInput.value = data.analysis_id || "";
-      el.reportTitle.textContent = (data.matter_type || "legal") + " 分析报告";
-      el.headlineRisk.textContent = data.risk_level || "medium";
-      el.headlineRisk.className = "tag " + escapeHtml(data.risk_level || "medium");
-      el.draftOpinion.textContent = data.draft_opinion || "暂无初步意见。";
-      renderMeta(data);
+    function appendAiMsg(data, save) {
+      var div = document.createElement("div");
+      div.className = "msg ai";
 
-      renderList(el.factsList, data.facts, function(fact, index) {
-        return '<div class="item"><h5>事实 ' + (index + 1) + '</h5><p>' + escapeHtml(fact) + '</p></div>';
-      }, "暂无事实提取。");
+      var opinionBlock = "";
+      if (data.draft_opinion) {
+        opinionBlock = '<div class="opinion-block"><div class="ob-head">' +
+          '<span class="ob-title">核心意见</span>' +
+          '<span class="tag on-dark">' + esc(data.risk_level || "medium") + '</span>' +
+          '<span class="tag on-dark">置信度: ' + esc(data.confidence || "-") + '</span>' +
+          '<span class="tag on-dark">' + esc(data.matter_type || "general") + '</span>' +
+          '</div><div class="ob-text">' + esc(data.draft_opinion) + '</div></div>';
+      }
 
-      renderSimpleList(el.actionsList, data.suggested_actions, "暂无建议动作。");
+      var sections = [];
 
-      renderList(el.issuesList, data.issues, function(issue) {
-        var tags = '<div class="token-row"><span class="tag ' + escapeHtml(issue.risk_level || "medium") + '">' + escapeHtml(issue.risk_level || "medium") + '</span></div>';
-        return '<div class="item"><h5>' + escapeHtml(issue.title || "未命名问题") + '</h5><p>' + escapeHtml(issue.analysis || "") + '</p>' + tags + '</div>';
-      }, "暂无问题项。");
+      if (data.facts && data.facts.length) {
+        sections.push(buildSection("关键事实", data.facts.map(function(f, i) {
+          return '<li>' + esc(f) + '</li>';
+        }).join(""), true));
+      }
 
-      renderList(el.basisList, data.legal_basis, function(basis) {
-        var tokens = '<div class="token-row"><span class="token">' + escapeHtml(basis.source_type || "") + '</span><span class="token">' + escapeHtml(basis.reference_id || "") + '</span><span class="token">score: ' + escapeHtml(basis.score != null ? basis.score : "-") + '</span></div>';
-        return '<div class="item"><h5>' + escapeHtml(basis.title || "") + '</h5><p>' + escapeHtml(basis.excerpt || "") + '</p>' + tokens + '</div>';
-      }, "暂无法律依据。");
+      if (data.issues && data.issues.length) {
+        var items = data.issues.map(function(iss) {
+          return '<div class="analysis-item"><h4>' + esc(iss.title || "未命名风险") + '</h4><p>' + esc(iss.analysis || "") + '</p><div class="ai-meta"><span class="tag ' + esc(iss.risk_level || "medium") + '">' + esc(iss.risk_level || "medium") + '</span></div></div>';
+        }).join("");
+        sections.push(buildSection("风险项", items, true));
+      }
 
-      renderSimpleList(el.reviewList, data.review_notes, "暂无复核意见。");
+      if (data.suggested_actions && data.suggested_actions.length) {
+        sections.push(buildSection("建议措施", data.suggested_actions.map(function(a) {
+          return '<li>' + esc(a) + '</li>';
+        }).join(""), false));
+      }
 
-      renderList(el.coordinationList, data.coordination_log, function(entry) {
-        return '<div class="item"><h5>' + escapeHtml(entry.sender || "") + " → " + escapeHtml(entry.recipient || "") + '</h5><p>' + escapeHtml(entry.content || "") + '</p></div>';
-      }, "暂无协调日志。");
+      if (data.legal_basis && data.legal_basis.length) {
+        var items = data.legal_basis.map(function(b) {
+          return '<div class="analysis-item"><h4>' + esc(b.title || "") + '</h4><p>' + esc(b.excerpt || "") + '</p><div class="ai-meta"><span class="ai-token">' + esc(b.source_type || "") + '</span><span class="ai-token">' + esc(b.reference_id || "") + '</span>' + (b.score != null ? '<span class="ai-token">score: ' + esc(b.score) + '</span>' : '') + '</div></div>';
+        }).join("");
+        sections.push(buildSection("法律依据", items, false));
+      }
 
-      renderList(el.traceList, data.trace, function(entry) {
-        return '<div class="item"><h5>' + escapeHtml(entry.agent_name || "") + '</h5><p>' + escapeHtml(entry.summary || "") + '</p></div>';
-      }, "暂无执行轨迹。");
+      if (data.review_notes && data.review_notes.length) {
+        sections.push(buildSection("复核意见", data.review_notes.map(function(n) {
+          return '<li>' + esc(n) + '</li>';
+        }).join(""), false));
+      }
 
-      renderList(el.debugList, data.llm_debug, function(entry) {
-        return '<div class="item"><h5>' + escapeHtml(entry.agent_name || "agent") + " · " + escapeHtml(entry.task || "task") + '</h5><pre>' + escapeHtml(JSON.stringify(entry.output, null, 2)) + '</pre></div>';
-      }, "暂无 LLM 调试输出。");
+      var errorBlock = "";
+      if (data.agent_errors && data.agent_errors.length) {
+        errorBlock = data.agent_errors.map(function(e) {
+          return '<div style="padding:6px 10px;margin:6px 0;border-radius:6px;background:var(--risk-high-bg);color:var(--risk-high);font-size:12px">' +
+            esc(e.agent_name) + ' 步骤异常: ' + esc(e.message) + '</div>';
+        }).join("");
+      }
 
-      el.debugMeta.textContent = (Array.isArray(data.llm_debug) ? data.llm_debug.length : 0) + " entries";
-      el.rawJson.textContent = JSON.stringify(data, null, 2);
+      var rawId = "raw_" + Date.now();
+      var rawBlock = '<button class="raw-toggle" data-raw="' + rawId + '">查看原始 JSON</button><div class="raw-json" id="' + rawId + '"><pre>' + esc(JSON.stringify(data, null, 2)) + '</pre></div>';
+
+      div.innerHTML = '<div class="msg-avatar">⚖</div><div class="msg-body"><div class="msg-bubble">' +
+        errorBlock + opinionBlock + sections.join("") + rawBlock + '</div></div>';
+      el.chatContainer.appendChild(div);
+
+      if (save !== false && currentSession !== null) {
+        sessions[currentSession].messages.push({ role: "ai", data: data });
+        saveSessions();
+      }
+    }
+
+    function buildSection(title, bodyHtml, defaultOpen) {
+      var openCls = defaultOpen ? " open" : "";
+      return '<div class="report-section"><div class="rs-head' + openCls + '">' + esc(title) + '</div><div class="rs-body' + openCls + '">' + (bodyHtml.indexOf("<li>") === 0 ? '<ul>' + bodyHtml + '</ul>' : bodyHtml) + '</div></div>';
+    }
+
+    // toggle sections + raw json
+    document.addEventListener("click", function(e) {
+      if (e.target.classList.contains("rs-head")) {
+        e.target.classList.toggle("open");
+        e.target.nextElementSibling.classList.toggle("open");
+      }
+      if (e.target.classList.contains("raw-toggle")) {
+        var rawEl = document.getElementById(e.target.getAttribute("data-raw"));
+        if (rawEl) rawEl.style.display = rawEl.style.display === "block" ? "none" : "block";
+      }
+    });
+
+    function scrollToBottom() {
+      el.chatScroll.scrollTop = el.chatScroll.scrollHeight;
+    }
+    function scrollToLatestAiMsg() {
+      var msgs = el.chatContainer.querySelectorAll(".msg.ai");
+      if (msgs.length) {
+        var last = msgs[msgs.length - 1];
+        el.chatScroll.scrollTop = last.offsetTop - el.chatContainer.offsetTop;
+      }
+    }
+
+    // Streaming: create empty bubble with placeholder sections
+    function createStreamingBubble() {
+      var uid = "s" + Date.now();
+      var div = document.createElement("div");
+      div.className = "msg ai";
+      div.setAttribute("data-stream-id", uid);
+      div.innerHTML = '<div class="msg-avatar">⚖</div><div class="msg-body"><div class="msg-bubble">' +
+        '<div class="st-matter ' + uid + '"></div>' +
+        '<div class="st-opinion ' + uid + '"></div>' +
+        '<div class="st-facts ' + uid + '"></div>' +
+        '<div class="st-issues ' + uid + '"></div>' +
+        '<div class="st-actions ' + uid + '"></div>' +
+        '<div class="st-basis ' + uid + '"></div>' +
+        '<div class="st-review ' + uid + '"></div>' +
+        '<div class="st-status ' + uid + '" style="padding:8px 0;font-size:13px;color:var(--text-muted)">' +
+          '<span class="dot"></span><span class="dot"></span><span class="dot"></span>' +
+          ' <span class="st-status-text ' + uid + '">正在分析...</span></div>' +
+        '</div></div>';
+      el.chatContainer.appendChild(div);
+      scrollToBottom();
+      return { el: div, uid: uid };
+    }
+
+    // Streaming: update a stage as it arrives
+    function renderStage(ctx, agent, data) {
+      var c = ctx.el, u = ctx.uid;
+      var statusText = c.querySelector(".st-status-text." + u);
+
+      if (data.error) {
+        var errHtml = '<div style="padding:6px 10px;margin:6px 0;border-radius:6px;background:var(--risk-high-bg);color:var(--risk-high);font-size:12px">' +
+          esc(data.error.agent_name) + ' 步骤异常: ' + esc(data.error.message) + '</div>';
+        var errTarget = c.querySelector(".st-status." + u);
+        if (errTarget) errTarget.insertAdjacentHTML("beforebegin", errHtml);
+      }
+
+      if (agent === "intake_agent") {
+        var el2 = c.querySelector(".st-matter." + u);
+        if (el2) el2.innerHTML = '<div style="margin-bottom:8px"><span class="tag on-dark">' + esc(data.matter_type || "general") + '</span></div>';
+        if (statusText) statusText.textContent = "分类完成，正在提取事实...";
+
+      } else if (agent === "fact_extraction_agent") {
+        var el2 = c.querySelector(".st-facts." + u);
+        if (el2 && data.facts && data.facts.length) {
+          el2.innerHTML = buildSection("关键事实", data.facts.map(function(f) {
+            return '<li>' + esc(f) + '</li>';
+          }).join(""), true);
+        }
+        if (statusText) statusText.textContent = "事实提取完成，正在检索法条...";
+
+      } else if (agent === "legal_retrieval_agent") {
+        var el2 = c.querySelector(".st-basis." + u);
+        if (el2 && data.legal_basis && data.legal_basis.length) {
+          var items = data.legal_basis.map(function(b) {
+            return '<div class="analysis-item"><h4>' + esc(b.title || "") + '</h4><p>' + esc(b.excerpt || "") + '</p><div class="ai-meta"><span class="ai-token">' + esc(b.source_type || "") + '</span><span class="ai-token">' + esc(b.reference_id || "") + '</span>' + (b.score != null ? '<span class="ai-token">score: ' + esc(b.score) + '</span>' : '') + '</div></div>';
+          }).join("");
+          el2.innerHTML = buildSection("法律依据", items, false);
+        }
+        if (statusText) statusText.textContent = "法条检索完成，正在生成分析...";
+
+      } else if (agent === "legal_reasoning_agent") {
+        var opEl = c.querySelector(".st-opinion." + u);
+        if (opEl && data.draft_opinion) {
+          opEl.innerHTML = '<div class="opinion-block"><div class="ob-head">' +
+            '<span class="ob-title">核心意见</span>' +
+            '<span class="tag on-dark">' + esc(data.risk_level || "medium") + '</span>' +
+            '</div><div class="ob-text">' + esc(data.draft_opinion) + '</div></div>';
+        }
+        var issEl = c.querySelector(".st-issues." + u);
+        if (issEl && data.issues && data.issues.length) {
+          var items = data.issues.map(function(iss) {
+            return '<div class="analysis-item"><h4>' + esc(iss.title || "未命名风险") + '</h4><p>' + esc(iss.analysis || "") + '</p><div class="ai-meta"><span class="tag ' + esc(iss.risk_level || "medium") + '">' + esc(iss.risk_level || "medium") + '</span></div></div>';
+          }).join("");
+          issEl.innerHTML = buildSection("风险项", items, true);
+        }
+        var actEl = c.querySelector(".st-actions." + u);
+        if (actEl && data.suggested_actions && data.suggested_actions.length) {
+          actEl.innerHTML = buildSection("建议措施", data.suggested_actions.map(function(a) {
+            return '<li>' + esc(a) + '</li>';
+          }).join(""), false);
+        }
+        if (statusText) statusText.textContent = "分析完成，正在复核...";
+
+      } else if (agent === "review_agent") {
+        var el2 = c.querySelector(".st-review." + u);
+        if (el2 && data.review_notes && data.review_notes.length) {
+          el2.innerHTML = buildSection("复核意见", data.review_notes.map(function(n) {
+            return '<li>' + esc(n) + '</li>';
+          }).join(""), false);
+        }
+        if (data.confidence) {
+          var opHead = c.querySelector(".ob-head");
+          if (opHead) {
+            opHead.innerHTML += '<span class="tag on-dark">置信度: ' + esc(data.confidence) + '</span>';
+          }
+        }
+        if (statusText) statusText.textContent = "分析完成";
+      }
+      scrollToLatestAiMsg();
+    }
+
+    // Streaming: finalize with raw JSON and save
+    function finalizeStreamingMsg(ctx, fullData) {
+      var c = ctx.el, u = ctx.uid;
+      var st = c.querySelector(".st-status." + u);
+      if (st) st.remove();
+
+      var rawId = "raw_" + Date.now();
+      var rawBlock = '<button class="raw-toggle" data-raw="' + rawId + '">查看原始 JSON</button><div class="raw-json" id="' + rawId + '"><pre>' + esc(JSON.stringify(fullData, null, 2)) + '</pre></div>';
+      var bubble = c.querySelector(".msg-bubble");
+      if (bubble) bubble.insertAdjacentHTML("beforeend", rawBlock);
+
+      if (currentSession !== null) {
+        sessions[currentSession].messages.push({ role: "ai", data: fullData });
+        saveSessions();
+      }
     }
 
     async function runAnalysis() {
-      var payload = collectPayload();
-      if (!payload.user_query) { setStatus("请先填写法律问题。", "error"); return; }
-      if (!payload.materials.length) { setStatus("至少需要一份有内容的材料。", "error"); return; }
-      setBusy(true, "正在运行多 Agent 分析...");
+      var query = el.queryInput.value.trim();
+      if (!query) { el.queryInput.focus(); return; }
+
+      if (currentSession === null) {
+        sessions.unshift({ title: query.slice(0, 30), messages: [] });
+        currentSession = 0;
+        el.welcome.style.display = "none";
+        el.chatContainer.innerHTML = "";
+      }
+
+      appendUserMsg(query, true);
+      el.queryInput.value = "";
+      setTextareaHeight();
+      el.sendBtn.disabled = true;
+
+      var ctx = createStreamingBubble();
+
       try {
-        var data = await requestJson("/analysis", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-        renderReport(data);
-        setStatus("分析完成，analysis_id: " + data.analysis_id, "good");
-      } catch (error) {
-        setStatus("分析失败：" + error.message, "error");
+        var resp = await fetch("/analysis/stream", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_query: query })
+        });
+        if (!resp.ok) {
+          var errText = await resp.text();
+          throw new Error(errText || resp.statusText);
+        }
+
+        var reader = resp.body.getReader();
+        var decoder = new TextDecoder();
+        var buffer = "";
+        var fullData = null;
+
+        while (true) {
+          var result = await reader.read();
+          if (result.done) break;
+          buffer += decoder.decode(result.value, { stream: true });
+
+          var lines = buffer.split("\\n");
+          buffer = lines.pop();
+
+          for (var i = 0; i < lines.length; i++) {
+            var line = lines[i].trim();
+            if (!line || !line.startsWith("data: ")) continue;
+            var jsonStr = line.slice(6);
+            try {
+              var evt = JSON.parse(jsonStr);
+              if (evt.event === "stage") {
+                renderStage(ctx, evt.agent, evt.data);
+              } else if (evt.event === "done") {
+                fullData = evt.data;
+              }
+            } catch(e) { /* skip malformed lines */ }
+          }
+        }
+
+        if (fullData) {
+          finalizeStreamingMsg(ctx, fullData);
+        }
+        renderHistory();
+      } catch(err) {
+        var statusEl = ctx.el.querySelector(".st-status." + ctx.uid);
+        if (statusEl) statusEl.remove();
+        var bubble = ctx.el.querySelector(".msg-bubble");
+        if (bubble) bubble.innerHTML = '<div style="color:var(--risk-high)">分析失败：' + esc(err.message) + '</div>';
       } finally {
-        setBusy(false);
+        el.sendBtn.disabled = false;
+        scrollToLatestAiMsg();
       }
     }
 
-    async function fetchAnalysis() {
-      var analysisId = el.analysisIdInput.value.trim();
-      if (!analysisId) { setStatus("请输入 analysis_id。", "error"); return; }
-      setBusy(true, "正在加载历史报告...");
-      try {
-        var data = await requestJson("/analysis/" + encodeURIComponent(analysisId), { method: "GET" });
-        renderReport(data);
-        setStatus("已取回报告：" + data.analysis_id, "good");
-      } catch (error) {
-        setStatus("加载失败：" + error.message, "error");
-      } finally {
-        setBusy(false);
-      }
-    }
+    el.sendBtn.addEventListener("click", runAnalysis);
+    el.queryInput.addEventListener("keydown", function(e) {
+      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); runAnalysis(); }
+    });
 
-    async function checkHealth() {
-      try {
-        await requestJson("/health", { method: "GET" });
-        setHealth(true);
-      } catch (error) {
-        setHealth(false);
-      }
-    }
+    // quick questions
+    document.querySelectorAll(".quick-card").forEach(function(card) {
+      card.addEventListener("click", function() {
+        el.queryInput.value = card.getAttribute("data-q");
+        setTextareaHeight();
+        runAnalysis();
+      });
+    });
 
-    function clearReport() {
-      el.emptyState.hidden = false;
-      el.reportShell.hidden = true;
-      el.analysisIdInput.value = "";
-      el.rawJson.textContent = "";
-      setStatus("已清空结果区。");
-    }
-
-    el.addMaterialBtn.addEventListener("click", function() { createMaterialCard(); });
-    el.fillBtn.addEventListener("click", loadExample);
-    el.clearBtn.addEventListener("click", clearReport);
-    el.analyzeBtn.addEventListener("click", runAnalysis);
-    el.fetchBtn.addEventListener("click", fetchAnalysis);
-
-    createMaterialCard();
-    loadExample();
+    // init
+    loadSessions();
+    renderHistory();
     checkHealth();
   </script>
 </body>

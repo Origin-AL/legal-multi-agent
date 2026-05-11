@@ -32,7 +32,7 @@ class LegalReasoningAgent(BaseAgent):
                 title=str(item.get("title", "Issue")),
                 analysis=str(item.get("analysis", "")),
                 risk_level=normalize_risk_level(str(item.get("risk_level", "medium"))),
-                citations=self._match_citations(legal_basis, str(item.get("title", ""))),
+                citations=self._match_citations(legal_basis, item),
             )
             for item in llm_result.get("issues", [])
         ]
@@ -51,7 +51,25 @@ class LegalReasoningAgent(BaseAgent):
             "summary": str(llm_result.get("summary", f"Generated {len(issues)} issue analyses.")),
         }
 
-    def _match_citations(self, legal_basis: list[Citation], issue_title: str) -> list[Citation]:
-        if "liquidated" in issue_title.lower() or "\u8fdd\u7ea6" in issue_title:
-            return legal_basis[1:3] if len(legal_basis) > 2 else legal_basis
-        return legal_basis[:2]
+    def _match_citations(self, legal_basis: list[Citation], issue: dict[str, Any]) -> list[Citation]:
+        """Match the most relevant citations to an issue based on keyword overlap and score."""
+        if not legal_basis:
+            return []
+
+        issue_text = " ".join([
+            str(issue.get("title", "")),
+            str(issue.get("analysis", "")),
+        ]).lower()
+
+        scored: list[tuple[float, Citation]] = []
+        for citation in legal_basis:
+            relevance = citation.score
+            citation_text = (citation.title + " " + citation.excerpt).lower()
+            issue_chars = set(issue_text)
+            cite_chars = set(citation_text)
+            overlap = len(issue_chars & cite_chars)
+            relevance += overlap * 0.01
+            scored.append((relevance, citation))
+
+        scored.sort(key=lambda x: x[0], reverse=True)
+        return [c for _, c in scored[:min(3, len(scored))]]
