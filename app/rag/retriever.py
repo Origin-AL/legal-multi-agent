@@ -77,7 +77,7 @@ class LegalKnowledgeRetriever:
             w = w.strip()
             if not w or w in _STOP_WORDS:
                 continue
-            if re.match(r"[a-z0-9_]+", w):
+            if re.fullmatch(r"[a-z0-9_]+", w):
                 tokens.add(w)
             elif "一" <= w[-1] <= "鿿" and len(w) >= 2:
                 tokens.add(w)

@@ -27,14 +27,14 @@ class ConfidenceLevel(str, Enum):
 
 
 class CaseMaterial(BaseModel):
-    title: str = Field(..., description="Material title, such as contract or complaint name.")
-    content: str = Field(..., description="Full text or extracted text content.")
+    title: str = Field(..., max_length=200, description="Material title, such as contract or complaint name.")
+    content: str = Field(..., max_length=50_000, description="Full text or extracted text content.")
 
 
 class AnalysisRequest(BaseModel):
-    user_query: str
-    case_type_hint: str | None = None
-    materials: list[CaseMaterial] = Field(default_factory=list)
+    user_query: str = Field(..., min_length=1, max_length=10_000)
+    case_type_hint: str | None = Field(None, max_length=200)
+    materials: list[CaseMaterial] = Field(default_factory=list, max_length=20)
 
 
 class AgentTrace(BaseModel):
@@ -78,7 +78,7 @@ class AgentError(BaseModel):
 class AnalysisResponse(BaseModel):
     analysis_id: str
     case_id: str
-    matter_type: MatterType
+    matter_type: MatterType = MatterType.general_legal_consultation
     risk_level: RiskLevel
     confidence: ConfidenceLevel
     facts: list[str]

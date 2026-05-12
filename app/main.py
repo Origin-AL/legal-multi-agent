@@ -1,5 +1,7 @@
+import asyncio
 import json
 import logging
+import threading
 from collections.abc import AsyncGenerator
 from datetime import datetime
 
@@ -70,8 +72,23 @@ async def analyze_case_stream(request: AnalysisRequest):
     if not request.user_query.strip():
         raise HTTPException(status_code=400, detail="user_query must not be empty")
 
+    queue: asyncio.Queue[dict | None] = asyncio.Queue()
+
+    def _produce() -> None:
+        try:
+            for chunk in orchestrator.run_streaming(request):
+                asyncio.run_coroutine_threadsafe(queue.put(chunk), loop)
+        finally:
+            asyncio.run_coroutine_threadsafe(queue.put(None), loop)
+
+    loop = asyncio.get_running_loop()
+    threading.Thread(target=_produce, daemon=True).start()
+
     async def event_generator() -> AsyncGenerator[str, None]:
-        for chunk in orchestrator.run_streaming(request):
+        while True:
+            chunk = await queue.get()
+            if chunk is None:
+                break
             yield f"data: {json.dumps(chunk, ensure_ascii=False, cls=_Encoder)}\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
