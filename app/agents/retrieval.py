@@ -16,8 +16,7 @@ class LegalRetrievalAgent(BaseAgent):
     def run(self, context: dict[str, Any]) -> dict[str, Any]:
         matter_type = context["state"].get("matter_type", "")
         query = context["request"].user_query
-        facts = context["state"].get("facts", [])
-        retrieval_query = " ".join([query, str(matter_type), *[str(item) for item in facts[:5]]])
+        retrieval_query = " ".join([query, str(matter_type)])
         matched = self.retriever.search(retrieval_query)
         return {
             "legal_basis": matched,

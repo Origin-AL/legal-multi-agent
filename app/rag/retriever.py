@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from collections import OrderedDict
 
 import jieba
 
@@ -8,6 +9,7 @@ from app.models import Citation, KnowledgeDocument
 
 LAYER_WEIGHTS = {"statute": 1.0, "interpretation": 0.85, "case": 0.7}
 MIN_SCORE_THRESHOLD = 0.15
+_CACHE_MAX_SIZE = 256
 
 _STOP_WORDS = frozenset(
     "的 了 在 是 我 有 和 就 不 人 都 一 一个 上 也 很 到 说 要 去 你 会 着 没有 看 好 "
@@ -24,13 +26,17 @@ class LegalKnowledgeRetriever:
             (doc, self._tokenize(" ".join([doc.title, doc.excerpt, doc.body, " ".join(doc.tags)])))
             for doc in documents
         ]
+        self._cache: OrderedDict[tuple[str, int], list[Citation]] = OrderedDict()
 
     def search(self, query: str, *, top_k: int | None = None) -> list[Citation]:
         query_tokens = self._tokenize(query)
-        query_lower = query.lower()
+        resolved_k = top_k if top_k is not None else min(max(3, len(query_tokens) // 3), 8)
+        cache_key = (query, resolved_k)
+        if cache_key in self._cache:
+            self._cache.move_to_end(cache_key)
+            return list(self._cache[cache_key])
 
-        if top_k is None:
-            top_k = min(max(3, len(query_tokens) // 3), 8)
+        query_lower = query.lower()
 
         scored: list[tuple[float, KnowledgeDocument]] = []
 
@@ -55,10 +61,13 @@ class LegalKnowledgeRetriever:
         filtered = [(s, d) for s, d in scored if s >= MIN_SCORE_THRESHOLD]
 
         if not filtered:
+            self._cache[cache_key] = []
+            if len(self._cache) > _CACHE_MAX_SIZE:
+                self._cache.popitem(last=False)
             return []
 
-        top_matches = filtered[:top_k]
-        return [
+        top_matches = filtered[:resolved_k]
+        results = [
             Citation(
                 source_type=document.source_type,
                 title=document.title,
@@ -68,6 +77,12 @@ class LegalKnowledgeRetriever:
             )
             for score, document in top_matches
         ]
+
+        self._cache[cache_key] = results
+        if len(self._cache) > _CACHE_MAX_SIZE:
+            self._cache.popitem(last=False)
+
+        return list(results)
 
     def _tokenize(self, text: str) -> set[str]:
         normalized = text.lower()

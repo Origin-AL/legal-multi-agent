@@ -19,6 +19,7 @@ INDEX_HTML = """<!doctype html>
       --bg-hover: #f0ebe2;
       --text: #2c2418;
       --text-secondary: #8a7e6e;
+      --text-muted: #b0a898;
       --text-user: #ffffff;
       --border: #e4dbd0;
       --accent: #c06030;
@@ -44,6 +45,7 @@ INDEX_HTML = """<!doctype html>
       --bg-hover: #302a24;
       --text: #e8e0d6;
       --text-secondary: #a09686;
+      --text-muted: #706858;
       --text-user: #ffffff;
       --border: #3a3228;
       --accent: #d07040;
@@ -336,8 +338,16 @@ INDEX_HTML = """<!doctype html>
       margin-left: 8px;
     }
     .rs-head.open::after { border-top: none; border-bottom: 5px solid var(--text-secondary); }
-    .rs-body { padding: 12px 14px; display: none; }
-    .rs-body.open { display: block; }
+    .rs-body {
+      padding: 0 14px;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.25s ease, padding 0.25s ease;
+    }
+    .rs-body.open {
+      max-height: 2000px;
+      padding: 12px 14px;
+    }
     .rs-body p, .rs-body li {
       font-size: 13px;
       line-height: 1.7;
@@ -379,6 +389,16 @@ INDEX_HTML = """<!doctype html>
     .tag.medium { background: var(--risk-med-bg); color: var(--risk-med); }
     .tag.high { background: var(--risk-high-bg); color: var(--risk-high); }
     .tag.on-dark { background: rgba(255,255,255,0.18); color: #fdf5e6; }
+    .tag.matter-contract { background: rgba(59,130,246,0.2); color: #2563eb; }
+    .tag.matter-labor { background: rgba(234,88,12,0.2); color: #ea580c; }
+    .tag.matter-compliance { background: rgba(16,185,129,0.2); color: #059669; }
+    .tag.matter-litigation { background: rgba(139,92,246,0.2); color: #7c3aed; }
+    .tag.matter-general { background: rgba(107,114,128,0.2); color: #4b5563; }
+    [data-theme="dark"] .tag.matter-contract { background: rgba(59,130,246,0.25); color: #60a5fa; }
+    [data-theme="dark"] .tag.matter-labor { background: rgba(234,88,12,0.25); color: #fb923c; }
+    [data-theme="dark"] .tag.matter-compliance { background: rgba(16,185,129,0.25); color: #34d399; }
+    [data-theme="dark"] .tag.matter-litigation { background: rgba(139,92,246,0.25); color: #a78bfa; }
+    [data-theme="dark"] .tag.matter-general { background: rgba(107,114,128,0.25); color: #9ca3af; }
 
     /* issue / basis items */
     .analysis-item {
@@ -486,6 +506,24 @@ INDEX_HTML = """<!doctype html>
     }
     .send-btn:hover { opacity: 0.9; }
     .send-btn:disabled { opacity: 0.4; cursor: default; }
+    .send-btn.cancel { background: var(--risk-high); }
+
+    .copy-btn {
+      margin-top: 10px;
+      padding: 6px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg-card);
+      color: var(--text-secondary);
+      font: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .copy-btn:hover { background: var(--bg-hover); color: var(--text); }
+    .copy-btn.copied { color: var(--risk-low); border-color: var(--risk-low); }
 
     /* scrollbar */
     ::-webkit-scrollbar { width: 6px; }
@@ -594,6 +632,7 @@ INDEX_HTML = """<!doctype html>
 
     var sessions = [];
     var currentSession = null;
+    var activeController = null;
 
     function esc(v) {
       return String(v == null ? "" : v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
@@ -628,10 +667,30 @@ INDEX_HTML = """<!doctype html>
     function saveSessions() {
       localStorage.setItem("legal_sessions", JSON.stringify(sessions.slice(0, 30)));
     }
+    var matterLabels = {
+      contract_review: "合同纠纷", labor_dispute: "劳动争议",
+      compliance_review: "合规审查", litigation_strategy: "诉讼策略",
+      general_legal_consultation: "法律咨询"
+    };
+    function matterTag(matterType) {
+      var key = matterType || "general_legal_consultation";
+      var label = matterLabels[key] || key;
+      var cls = "matter-" + (key.split("_")[0] || "general");
+      return '<span class="tag ' + cls + '">' + esc(label) + '</span>';
+    }
+
+    function formatTime(ts) {
+      if (!ts) return "";
+      var d = new Date(ts);
+      var pad = function(n) { return n < 10 ? "0" + n : "" + n; };
+      return pad(d.getMonth()+1) + "/" + pad(d.getDate()) + " " + pad(d.getHours()) + ":" + pad(d.getMinutes());
+    }
+
     function renderHistory() {
       el.historyList.innerHTML = sessions.map(function(s, i) {
         var cls = currentSession === i ? " active" : "";
-        return '<div class="history-item' + cls + '" data-i="' + i + '">' + esc(s.title) + '</div>';
+        var time = s.createdAt ? '<span style="float:right;font-size:11px;opacity:0.6">' + formatTime(s.createdAt) + '</span>' : "";
+        return '<div class="history-item' + cls + '" data-i="' + i + '">' + esc(s.title) + time + '</div>';
       }).join("");
       el.historyList.querySelectorAll(".history-item").forEach(function(item) {
         item.addEventListener("click", function() {
@@ -683,7 +742,7 @@ INDEX_HTML = """<!doctype html>
         if (!resp.ok) throw new Error((await resp.json()).detail || resp.statusText);
         var data = await resp.json();
         if (currentSession === null) {
-          sessions.unshift({ title: "[回查] " + id.slice(0,8), messages: [] });
+          sessions.unshift({ title: "[回查] " + id.slice(0,8), messages: [], createdAt: Date.now() });
           currentSession = 0;
           el.welcome.style.display = "none";
           el.chatContainer.innerHTML = "";
@@ -720,26 +779,24 @@ INDEX_HTML = """<!doctype html>
       var opinionBlock = "";
       if (data.draft_opinion) {
         opinionBlock = '<div class="opinion-block"><div class="ob-head">' +
-          '<span class="ob-title">核心意见</span>' +
+          '<span class="ob-title">法律意见书</span>' +
           '<span class="tag on-dark">' + esc(data.risk_level || "medium") + '</span>' +
           '<span class="tag on-dark">置信度: ' + esc(data.confidence || "-") + '</span>' +
-          '<span class="tag on-dark">' + esc(data.matter_type || "general") + '</span>' +
-          '</div><div class="ob-text">' + esc(data.draft_opinion) + '</div></div>';
+          matterTag(data.matter_type) +
+          '</div><div class="ob-text">' + formatOpinion(data.draft_opinion) + '</div></div>';
       }
 
       var sections = [];
 
       if (data.facts && data.facts.length) {
-        sections.push(buildSection("关键事实", data.facts.map(function(f, i) {
+        sections.push(buildSection("关键事实 (" + data.facts.length + "项)", data.facts.map(function(f, i) {
           return '<li>' + esc(f) + '</li>';
-        }).join(""), true));
+        }).join(""), false));
       }
 
       if (data.issues && data.issues.length) {
-        var items = data.issues.map(function(iss) {
-          return '<div class="analysis-item"><h4>' + esc(iss.title || "未命名风险") + '</h4><p>' + esc(iss.analysis || "") + '</p><div class="ai-meta"><span class="tag ' + esc(iss.risk_level || "medium") + '">' + esc(iss.risk_level || "medium") + '</span></div></div>';
-        }).join("");
-        sections.push(buildSection("风险项", items, true));
+        var items = data.issues.map(buildIssueItem).join("");
+        sections.push(buildSection("风险分析 (" + data.issues.length + "项)", items, false));
       }
 
       if (data.suggested_actions && data.suggested_actions.length) {
@@ -787,6 +844,57 @@ INDEX_HTML = """<!doctype html>
       return '<div class="report-section"><div class="rs-head' + openCls + '">' + esc(title) + '</div><div class="rs-body' + openCls + '">' + (bodyHtml.indexOf("<li>") === 0 ? '<ul>' + bodyHtml + '</ul>' : bodyHtml) + '</div></div>';
     }
 
+    function stripMd(s) {
+      return s.replace(/\*\*/g, "").replace(/__([^_]+)__/g, "$1").replace(/`([^`]+)`/g, "$1");
+    }
+
+    function formatOpinion(text) {
+      if (!text) return "";
+      var lines = text.split("\\n");
+      var html = "";
+      var inList = false;
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i].trim();
+        if (!line || /^---+$/.test(line)) {
+          if (inList) { html += "</ul>"; inList = false; }
+          continue;
+        }
+        line = stripMd(line);
+        if (/^#{1,3}\s+/.test(line)) {
+          if (inList) { html += "</ul>"; inList = false; }
+          html += '<div style="font-weight:700;font-size:13px;margin:12px 0 4px;color:inherit">' + esc(line.replace(/^#{1,3}\s+/, "")) + '</div>';
+        } else if (/^(一|二|三|四|五|六|七|八|九|十|【|[一二三四五六七八九十]+[、.])[）)]/.test(line) ||
+            /^(案情概述|法律分析|风险提示|行动建议|结论|建议|总结)/.test(line)) {
+          if (inList) { html += "</ul>"; inList = false; }
+          html += '<div style="font-weight:700;font-size:13px;margin:12px 0 4px;color:inherit">' + esc(line) + '</div>';
+        } else if (/^[•·\-]\s|^\d+[.、)）]/.test(line)) {
+          if (!inList) { html += '<ul style="padding-left:18px;margin:4px 0">'; inList = true; }
+          html += '<li style="font-size:13px;line-height:1.8;color:inherit;margin:2px 0">' + esc(line.replace(/^[•·\-]\s|^\d+[.、)）]\s*/, "")) + '</li>';
+        } else if (/^⚠️/.test(line)) {
+          if (inList) { html += "</ul>"; inList = false; }
+          html += '<div style="padding:6px 10px;margin:6px 0;border-radius:6px;background:rgba(255,200,0,0.15);font-size:13px;line-height:1.7">' + esc(line) + '</div>';
+        } else {
+          if (inList) { html += "</ul>"; inList = false; }
+          html += '<p style="font-size:13px;line-height:1.8;margin:4px 0;color:inherit">' + esc(line) + '</p>';
+        }
+      }
+      if (inList) html += "</ul>";
+      return html;
+    }
+
+    function buildIssueItem(iss) {
+      var html = '<div class="analysis-item"><h4>' + esc(iss.title || "未命名风险") + '</h4><p>' + esc(iss.analysis || "") + '</p>';
+      if (iss.citations && iss.citations.length) {
+        html += '<div class="ai-meta" style="margin-top:8px">';
+        iss.citations.forEach(function(c) {
+          html += '<span class="ai-token" title="' + esc(c.excerpt || "") + '">' + esc(c.title || c.reference_id || "") + '</span>';
+        });
+        html += '</div>';
+      }
+      html += '<div class="ai-meta"><span class="tag ' + esc(iss.risk_level || "medium") + '">' + esc(iss.risk_level || "medium") + '</span></div></div>';
+      return html;
+    }
+
     // toggle sections + raw json
     document.addEventListener("click", function(e) {
       if (e.target.classList.contains("rs-head")) {
@@ -830,7 +938,7 @@ INDEX_HTML = """<!doctype html>
         '</div></div>';
       el.chatContainer.appendChild(div);
       scrollToBottom();
-      return { el: div, uid: uid };
+      return { el: div, uid: uid, matter: "general_legal_consultation" };
     }
 
     // Streaming: update a stage as it arrives
@@ -846,16 +954,17 @@ INDEX_HTML = """<!doctype html>
       }
 
       if (agent === "intake_agent") {
+        ctx.matter = data.matter_type || "general_legal_consultation";
         var el2 = c.querySelector(".st-matter." + u);
-        if (el2) el2.innerHTML = '<div style="margin-bottom:8px"><span class="tag on-dark">' + esc(data.matter_type || "general") + '</span></div>';
+        if (el2) el2.innerHTML = '<div style="margin-bottom:8px">' + matterTag(ctx.matter) + '</div>';
         if (statusText) statusText.textContent = "分类完成，正在提取事实...";
 
       } else if (agent === "fact_extraction_agent") {
         var el2 = c.querySelector(".st-facts." + u);
         if (el2 && data.facts && data.facts.length) {
-          el2.innerHTML = buildSection("关键事实", data.facts.map(function(f) {
+          el2.innerHTML = buildSection("关键事实 (" + data.facts.length + "项)", data.facts.map(function(f) {
             return '<li>' + esc(f) + '</li>';
-          }).join(""), true);
+          }).join(""), false);
         }
         if (statusText) statusText.textContent = "事实提取完成，正在检索法条...";
 
@@ -873,16 +982,15 @@ INDEX_HTML = """<!doctype html>
         var opEl = c.querySelector(".st-opinion." + u);
         if (opEl && data.draft_opinion) {
           opEl.innerHTML = '<div class="opinion-block"><div class="ob-head">' +
-            '<span class="ob-title">核心意见</span>' +
+            '<span class="ob-title">法律意见书</span>' +
             '<span class="tag on-dark">' + esc(data.risk_level || "medium") + '</span>' +
-            '</div><div class="ob-text">' + esc(data.draft_opinion) + '</div></div>';
+            matterTag(ctx.matter) +
+            '</div><div class="ob-text">' + formatOpinion(data.draft_opinion) + '</div></div>';
         }
         var issEl = c.querySelector(".st-issues." + u);
         if (issEl && data.issues && data.issues.length) {
-          var items = data.issues.map(function(iss) {
-            return '<div class="analysis-item"><h4>' + esc(iss.title || "未命名风险") + '</h4><p>' + esc(iss.analysis || "") + '</p><div class="ai-meta"><span class="tag ' + esc(iss.risk_level || "medium") + '">' + esc(iss.risk_level || "medium") + '</span></div></div>';
-          }).join("");
-          issEl.innerHTML = buildSection("风险项", items, true);
+          var items = data.issues.map(buildIssueItem).join("");
+          issEl.innerHTML = buildSection("风险分析 (" + data.issues.length + "项)", items, false);
         }
         var actEl = c.querySelector(".st-actions." + u);
         if (actEl && data.suggested_actions && data.suggested_actions.length) {
@@ -916,14 +1024,94 @@ INDEX_HTML = """<!doctype html>
       var st = c.querySelector(".st-status." + u);
       if (st) st.remove();
 
+      var copyId = "copy_" + Date.now();
       var rawId = "raw_" + Date.now();
-      var rawBlock = '<button class="raw-toggle" data-raw="' + rawId + '">查看原始 JSON</button><div class="raw-json" id="' + rawId + '"><pre>' + esc(JSON.stringify(fullData, null, 2)) + '</pre></div>';
+      var footerHtml = '<div style="display:flex;gap:8px;align-items:center;margin-top:10px">' +
+        '<button class="copy-btn" id="' + copyId + '" data-copy="' + copyId + '">复制分析结果</button>' +
+        '<button class="raw-toggle" data-raw="' + rawId + '">查看原始 JSON</button></div>' +
+        '<div class="raw-json" id="' + rawId + '"><pre>' + esc(JSON.stringify(fullData, null, 2)) + '</pre></div>';
       var bubble = c.querySelector(".msg-bubble");
-      if (bubble) bubble.insertAdjacentHTML("beforeend", rawBlock);
+      if (bubble) bubble.insertAdjacentHTML("beforeend", footerHtml);
+
+      var copyBtn = document.getElementById(copyId);
+      if (copyBtn) {
+        copyBtn.addEventListener("click", function() {
+          var text = buildCopyText(fullData);
+          navigator.clipboard.writeText(text).then(function() {
+            copyBtn.textContent = "已复制";
+            copyBtn.classList.add("copied");
+            setTimeout(function() {
+              copyBtn.textContent = "复制分析结果";
+              copyBtn.classList.remove("copied");
+            }, 2000);
+          });
+        });
+      }
 
       if (currentSession !== null) {
         sessions[currentSession].messages.push({ role: "ai", data: fullData });
         saveSessions();
+      }
+    }
+
+    function buildCopyText(d) {
+      var parts = [];
+      parts.push("【案件类型】" + (d.matter_type || "-"));
+      parts.push("【风险等级】" + (d.risk_level || "-"));
+      parts.push("【置信度】" + (d.confidence || "-"));
+      parts.push("");
+      if (d.draft_opinion) { parts.push("【核心意见】"); parts.push(d.draft_opinion); parts.push(""); }
+      if (d.facts && d.facts.length) {
+        parts.push("【关键事实】");
+        d.facts.forEach(function(f, i) { parts.push((i+1) + ". " + f); });
+        parts.push("");
+      }
+      if (d.issues && d.issues.length) {
+        parts.push("【风险分析】");
+        d.issues.forEach(function(iss) {
+          parts.push("- " + (iss.title || "") + " [" + (iss.risk_level || "") + "]");
+          if (iss.analysis) parts.push("  " + iss.analysis);
+        });
+        parts.push("");
+      }
+      if (d.suggested_actions && d.suggested_actions.length) {
+        parts.push("【建议措施】");
+        d.suggested_actions.forEach(function(a, i) { parts.push((i+1) + ". " + a); });
+        parts.push("");
+      }
+      if (d.legal_basis && d.legal_basis.length) {
+        parts.push("【法律依据】");
+        d.legal_basis.forEach(function(b) { parts.push("- " + (b.title || "") + " (" + (b.reference_id || "") + ")"); });
+        parts.push("");
+      }
+      if (d.review_notes && d.review_notes.length) {
+        parts.push("【复核意见】");
+        d.review_notes.forEach(function(n) { parts.push("- " + n); });
+      }
+      return parts.join("\\n");
+    }
+
+    function cancelAnalysis() {
+      if (activeController) {
+        activeController.abort();
+        activeController = null;
+      }
+    }
+
+    function setSendButtonState(loading) {
+      if (loading) {
+        el.sendBtn.disabled = false;
+        el.sendBtn.classList.add("cancel");
+        el.sendBtn.textContent = "✕";
+        el.sendBtn.title = "取消分析";
+        el.sendBtn.onclick = cancelAnalysis;
+      } else {
+        el.sendBtn.disabled = false;
+        el.sendBtn.classList.remove("cancel");
+        el.sendBtn.textContent = "↑";
+        el.sendBtn.title = "发送";
+        el.sendBtn.onclick = runAnalysis;
+        activeController = null;
       }
     }
 
@@ -932,7 +1120,7 @@ INDEX_HTML = """<!doctype html>
       if (!query) { el.queryInput.focus(); return; }
 
       if (currentSession === null) {
-        sessions.unshift({ title: query.slice(0, 30), messages: [] });
+        sessions.unshift({ title: query.slice(0, 30), messages: [], createdAt: Date.now() });
         currentSession = 0;
         el.welcome.style.display = "none";
         el.chatContainer.innerHTML = "";
@@ -941,7 +1129,9 @@ INDEX_HTML = """<!doctype html>
       appendUserMsg(query, true);
       el.queryInput.value = "";
       setTextareaHeight();
-      el.sendBtn.disabled = true;
+
+      activeController = new AbortController();
+      setSendButtonState(true);
 
       var ctx = createStreamingBubble();
 
@@ -949,7 +1139,8 @@ INDEX_HTML = """<!doctype html>
         var resp = await fetch("/analysis/stream", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_query: query })
+          body: JSON.stringify({ user_query: query }),
+          signal: activeController.signal
         });
         if (!resp.ok) {
           var errText = await resp.text();
@@ -989,17 +1180,22 @@ INDEX_HTML = """<!doctype html>
         }
         renderHistory();
       } catch(err) {
+        if (err.name === "AbortError") {
+          var statusEl = ctx.el.querySelector(".st-status." + ctx.uid);
+          if (statusEl) statusEl.querySelector(".st-status-text").textContent = "分析已取消";
+          return;
+        }
         var statusEl = ctx.el.querySelector(".st-status." + ctx.uid);
         if (statusEl) statusEl.remove();
         var bubble = ctx.el.querySelector(".msg-bubble");
         if (bubble) bubble.innerHTML = '<div style="color:var(--risk-high)">分析失败：' + esc(err.message) + '</div>';
       } finally {
-        el.sendBtn.disabled = false;
+        setSendButtonState(false);
         scrollToLatestAiMsg();
       }
     }
 
-    el.sendBtn.addEventListener("click", runAnalysis);
+    el.sendBtn.onclick = runAnalysis;
     el.queryInput.addEventListener("keydown", function(e) {
       if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); runAnalysis(); }
     });

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Generator
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
 from app.agents.facts import FactExtractionAgent
@@ -69,12 +70,18 @@ class LegalOrchestrator:
         repository = repository or AnalysisRepository(settings.database_path)
 
         self.repository = repository
-        self.pipeline = [
-            IntakeAgent(llm_provider),
-            FactExtractionAgent(llm_provider),
-            LegalRetrievalAgent(llm_provider, retriever),
-            LegalReasoningAgent(llm_provider),
-            ReviewAgent(llm_provider),
+        self._intake = IntakeAgent(llm_provider)
+        self._facts = FactExtractionAgent(llm_provider)
+        self._retrieval = LegalRetrievalAgent(llm_provider, retriever)
+        self._reasoning = LegalReasoningAgent(llm_provider)
+        self._review = ReviewAgent(llm_provider)
+        # Pipeline stages: list of agent groups. Groups run sequentially;
+        # agents within a group run in parallel.
+        self._stages: list[list] = [
+            [self._intake],               # Stage 1: intake (sequential)
+            [self._facts, self._retrieval],  # Stage 2: facts ‖ retrieval (parallel)
+            [self._reasoning],            # Stage 3: reasoning (sequential)
+            [self._review],               # Stage 4: review (sequential)
         ]
 
     def _run_agent(
@@ -135,17 +142,28 @@ class LegalOrchestrator:
         llm_debug: list[LLMDebugEntry] = []
         agent_errors: list[AgentError] = []
 
-        for agent in self.pipeline:
-            result, error = self._run_agent(agent, request, state)
-            if error:
-                agent_errors.append(error)
-            summary = str(result.pop("summary", ""))
-            raw_messages = result.pop("messages", [])
-            raw_debug = result.pop("llm_debug", [])
-            state.update(result)
-            trace.append(AgentTrace(agent_name=agent.name, summary=summary))
-            coordination_log.extend(CoordinationMessage(**message) for message in raw_messages)
-            llm_debug.extend(LLMDebugEntry(**entry) for entry in raw_debug)
+        for stage in self._stages:
+            if len(stage) == 1:
+                results = [(stage[0], *self._run_agent(stage[0], request, state))]
+            else:
+                with ThreadPoolExecutor(max_workers=len(stage)) as pool:
+                    futures = {pool.submit(self._run_agent, agent, request, state): agent for agent in stage}
+                    results = []
+                    for future in as_completed(futures):
+                        agent = futures[future]
+                        result, error = future.result()
+                        results.append((agent, result, error))
+
+            for agent, result, error in results:
+                if error:
+                    agent_errors.append(error)
+                summary = str(result.pop("summary", ""))
+                raw_messages = result.pop("messages", [])
+                raw_debug = result.pop("llm_debug", [])
+                state.update(result)
+                trace.append(AgentTrace(agent_name=agent.name, summary=summary))
+                coordination_log.extend(CoordinationMessage(**message) for message in raw_messages)
+                llm_debug.extend(LLMDebugEntry(**entry) for entry in raw_debug)
 
         return self._build_response(
             request=request,
@@ -172,8 +190,8 @@ class LegalOrchestrator:
             "review_agent": ["confidence", "review_notes"],
         }
 
-        for agent in self.pipeline:
-            result, error = self._run_agent(agent, request, state)
+        def _process_result(agent, result, error):
+            """Process an agent result, update state, yield SSE event."""
             if error:
                 agent_errors.append(error)
             summary = str(result.pop("summary", ""))
@@ -198,7 +216,21 @@ class LegalOrchestrator:
                 else:
                     snapshot[key] = val
 
-            yield {"event": "stage", "agent": agent.name, "data": snapshot}
+            return {"event": "stage", "agent": agent.name, "data": snapshot}
+
+        for stage in self._stages:
+            if len(stage) == 1:
+                agent = stage[0]
+                result, error = self._run_agent(agent, request, state)
+                yield _process_result(agent, result, error)
+            else:
+                # Parallel stage: run agents concurrently, yield as each completes
+                with ThreadPoolExecutor(max_workers=len(stage)) as pool:
+                    futures = {pool.submit(self._run_agent, agent, request, state): agent for agent in stage}
+                    for future in as_completed(futures):
+                        agent = futures[future]
+                        result, error = future.result()
+                        yield _process_result(agent, result, error)
 
         response = self._build_response(
             request=request,
