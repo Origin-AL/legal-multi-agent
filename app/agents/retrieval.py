@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from langfuse import observe
+
 from app.agents.base import BaseAgent
 from app.rag.retriever import LegalKnowledgeRetriever
 
@@ -13,6 +15,7 @@ class LegalRetrievalAgent(BaseAgent):
         super().__init__(llm_provider)
         self.retriever = retriever
 
+    @observe(as_type="agent", name="legal_retrieval_agent")
     def run(self, context: dict[str, Any]) -> dict[str, Any]:
         matter_type = context["state"].get("matter_type", "")
         query = context["request"].user_query

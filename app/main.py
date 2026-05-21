@@ -7,6 +7,7 @@ from datetime import datetime
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
+from langfuse import Langfuse
 
 logger = logging.getLogger(__name__)
 
@@ -100,3 +101,26 @@ def get_analysis(analysis_id: str) -> AnalysisResponse:
     if response is None:
         raise HTTPException(status_code=404, detail="analysis not found")
     return response
+
+
+@app.post("/feedback")
+async def submit_feedback(request: Request):
+    body = await request.json()
+    analysis_id = body.get("analysis_id")
+    value = body.get("value")
+    comment = body.get("comment", "")
+
+    if analysis_id is None or value is None:
+        raise HTTPException(status_code=400, detail="analysis_id and value are required")
+
+    trace_id = Langfuse.create_trace_id(seed=analysis_id)
+    langfuse = orchestrator._langfuse
+    langfuse.create_score(
+        name="user_feedback",
+        value=float(value),
+        trace_id=trace_id,
+        data_type="NUMERIC",
+        comment=comment,
+    )
+    langfuse.flush()
+    return {"status": "ok"}

@@ -525,6 +525,36 @@ INDEX_HTML = """<!doctype html>
     .copy-btn:hover { background: var(--bg-hover); color: var(--text); }
     .copy-btn.copied { color: var(--risk-low); border-color: var(--risk-low); }
 
+    .feedback-bar {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-left: 4px;
+    }
+    .fb-btn {
+      width: 30px; height: 30px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg-card);
+      color: var(--text-secondary);
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+    }
+    .fb-btn:hover { background: var(--bg-hover); color: var(--text); }
+    .fb-btn.active-up { background: var(--risk-low-bg); border-color: var(--risk-low); color: var(--risk-low); }
+    .fb-btn.active-down { background: var(--risk-high-bg); border-color: var(--risk-high); color: var(--risk-high); }
+    .fb-btn:disabled { opacity: 0.5; cursor: default; }
+    .fb-thanks {
+      font-size: 12px;
+      color: var(--risk-low);
+      display: none;
+      margin-left: 4px;
+    }
+
     /* scrollbar */
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -827,7 +857,17 @@ INDEX_HTML = """<!doctype html>
       }
 
       var rawId = "raw_" + Date.now();
-      var rawBlock = '<button class="raw-toggle" data-raw="' + rawId + '">查看原始 JSON</button><div class="raw-json" id="' + rawId + '"><pre>' + esc(JSON.stringify(data, null, 2)) + '</pre></div>';
+      var fbUpId = "fb_up_" + Date.now();
+      var fbDownId = "fb_down_" + Date.now();
+      var fbThanksId = "fb_thanks_" + Date.now();
+      var rawBlock = '<div style="display:flex;gap:8px;align-items:center;margin-top:10px">' +
+        '<div class="feedback-bar">' +
+        '<button class="fb-btn" id="' + fbUpId + '" title="有帮助">👍</button>' +
+        '<button class="fb-btn" id="' + fbDownId + '" title="没帮助">👎</button>' +
+        '<span class="fb-thanks" id="' + fbThanksId + '">感谢反馈</span>' +
+        '</div>' +
+        '<button class="raw-toggle" data-raw="' + rawId + '">查看原始 JSON</button></div>' +
+        '<div class="raw-json" id="' + rawId + '"><pre>' + esc(JSON.stringify(data, null, 2)) + '</pre></div>';
 
       div.innerHTML = '<div class="msg-avatar">⚖</div><div class="msg-body"><div class="msg-bubble">' +
         errorBlock + opinionBlock + sections.join("") + rawBlock + '</div></div>';
@@ -837,6 +877,24 @@ INDEX_HTML = """<!doctype html>
         sessions[currentSession].messages.push({ role: "ai", data: data });
         saveSessions();
       }
+
+      var fbUp = document.getElementById(fbUpId);
+      var fbDown = document.getElementById(fbDownId);
+      var fbThanks = document.getElementById(fbThanksId);
+      function sendFeedback(value, clickedBtn, otherBtn) {
+        fetch("/feedback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ analysis_id: data.analysis_id, value: value })
+        }).then(function() {
+          clickedBtn.classList.add(value > 0 ? "active-up" : "active-down");
+          clickedBtn.disabled = true;
+          otherBtn.disabled = true;
+          if (fbThanks) fbThanks.style.display = "inline";
+        });
+      }
+      if (fbUp) fbUp.addEventListener("click", function() { sendFeedback(1, fbUp, fbDown); });
+      if (fbDown) fbDown.addEventListener("click", function() { sendFeedback(0, fbDown, fbUp); });
     }
 
     function buildSection(title, bodyHtml, defaultOpen) {
@@ -1026,8 +1084,16 @@ INDEX_HTML = """<!doctype html>
 
       var copyId = "copy_" + Date.now();
       var rawId = "raw_" + Date.now();
-      var footerHtml = '<div style="display:flex;gap:8px;align-items:center;margin-top:10px">' +
+      var fbUpId = "fb_up_" + Date.now();
+      var fbDownId = "fb_down_" + Date.now();
+      var fbThanksId = "fb_thanks_" + Date.now();
+      var footerHtml = '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">' +
         '<button class="copy-btn" id="' + copyId + '" data-copy="' + copyId + '">复制分析结果</button>' +
+        '<div class="feedback-bar">' +
+        '<button class="fb-btn" id="' + fbUpId + '" title="有帮助">👍</button>' +
+        '<button class="fb-btn" id="' + fbDownId + '" title="没帮助">👎</button>' +
+        '<span class="fb-thanks" id="' + fbThanksId + '">感谢反馈</span>' +
+        '</div>' +
         '<button class="raw-toggle" data-raw="' + rawId + '">查看原始 JSON</button></div>' +
         '<div class="raw-json" id="' + rawId + '"><pre>' + esc(JSON.stringify(fullData, null, 2)) + '</pre></div>';
       var bubble = c.querySelector(".msg-bubble");
@@ -1047,6 +1113,24 @@ INDEX_HTML = """<!doctype html>
           });
         });
       }
+
+      var fbUp = document.getElementById(fbUpId);
+      var fbDown = document.getElementById(fbDownId);
+      var fbThanks = document.getElementById(fbThanksId);
+      function sendFeedback(value, clickedBtn, otherBtn) {
+        fetch("/feedback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ analysis_id: fullData.analysis_id, value: value })
+        }).then(function() {
+          clickedBtn.classList.add(value > 0 ? "active-up" : "active-down");
+          clickedBtn.disabled = true;
+          otherBtn.disabled = true;
+          if (fbThanks) fbThanks.style.display = "inline";
+        });
+      }
+      if (fbUp) fbUp.addEventListener("click", function() { sendFeedback(1, fbUp, fbDown); });
+      if (fbDown) fbDown.addEventListener("click", function() { sendFeedback(0, fbDown, fbUp); });
 
       if (currentSession !== null) {
         sessions[currentSession].messages.push({ role: "ai", data: fullData });

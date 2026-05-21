@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from langfuse import observe
+
 from app.agents.base import BaseAgent
 from app.models import Citation, IssueItem
 from app.prompts import REASONING_SYSTEM_PROMPT
@@ -11,6 +13,7 @@ from app.utils.normalizers import normalize_risk_level
 class LegalReasoningAgent(BaseAgent):
     name = "legal_reasoning_agent"
 
+    @observe(as_type="agent", name="legal_reasoning_agent")
     def run(self, context: dict[str, Any]) -> dict[str, Any]:
         facts = context["state"].get("facts", [])
         legal_basis = context["state"].get("legal_basis", [])

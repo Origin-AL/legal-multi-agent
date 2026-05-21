@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from langfuse import observe
+
 from app.agents.base import BaseAgent
 from app.prompts import REVIEW_SYSTEM_PROMPT
 from app.utils.normalizers import normalize_confidence_level
@@ -10,6 +12,7 @@ from app.utils.normalizers import normalize_confidence_level
 class ReviewAgent(BaseAgent):
     name = "review_agent"
 
+    @observe(as_type="agent", name="review_agent")
     def run(self, context: dict[str, Any]) -> dict[str, Any]:
         request = context["request"]
         facts = context["state"].get("facts", [])

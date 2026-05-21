@@ -7,6 +7,8 @@ from typing import Any
 from urllib import request
 from urllib.error import HTTPError, URLError
 
+from langfuse import get_client, observe
+
 from app.llm.base import BaseLLMProvider
 
 logger = logging.getLogger(__name__)
@@ -24,6 +26,7 @@ class OpenAICompatibleProvider(BaseLLMProvider):
         self.api_key = self._sanitize_api_key(api_key)
         self.model = model
 
+    @observe(as_type="generation")
     def generate_json(self, *, task: str, system_prompt: str, user_prompt: str) -> dict[str, Any]:
         payload = {
             "model": self.model,
@@ -77,6 +80,25 @@ class OpenAICompatibleProvider(BaseLLMProvider):
             )
         if not isinstance(content, str):
             content = str(content)
+
+        client = get_client()
+        usage = raw.get("usage")
+        if usage:
+            client.update_current_generation(
+                model=self.model,
+                usage_details={
+                    "input": usage.get("prompt_tokens", 0),
+                    "output": usage.get("completion_tokens", 0),
+                    "total": usage.get("total_tokens", 0),
+                },
+                metadata={"task": task},
+            )
+        else:
+            client.update_current_generation(
+                model=self.model,
+                metadata={"task": task},
+            )
+
         try:
             return json.loads(content)
         except json.JSONDecodeError as exc:

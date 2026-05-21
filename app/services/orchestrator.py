@@ -5,12 +5,15 @@ from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
+from langfuse import observe
+
 from app.agents.facts import FactExtractionAgent
 from app.agents.intake import IntakeAgent
 from app.agents.reasoning import LegalReasoningAgent
 from app.agents.retrieval import LegalRetrievalAgent
 from app.agents.review import ReviewAgent
 from app.config import settings
+from app.observability import langfuse
 from app.llm.factory import build_llm_provider
 from app.llm.base import BaseLLMProvider
 from app.models import (
@@ -70,6 +73,7 @@ class LegalOrchestrator:
         repository = repository or AnalysisRepository(settings.database_path)
 
         self.repository = repository
+        self._langfuse = langfuse
         self._intake = IntakeAgent(llm_provider)
         self._facts = FactExtractionAgent(llm_provider)
         self._retrieval = LegalRetrievalAgent(llm_provider, retriever)
@@ -135,6 +139,7 @@ class LegalOrchestrator:
         self.repository.save(request, response)
         return response
 
+    @observe(name="analysis_request")
     def run(self, request: AnalysisRequest) -> AnalysisResponse:
         state: dict[str, object] = {}
         trace: list[AgentTrace] = []
@@ -165,7 +170,7 @@ class LegalOrchestrator:
                 coordination_log.extend(CoordinationMessage(**message) for message in raw_messages)
                 llm_debug.extend(LLMDebugEntry(**entry) for entry in raw_debug)
 
-        return self._build_response(
+        response = self._build_response(
             request=request,
             state=state,
             trace=trace,
@@ -173,7 +178,11 @@ class LegalOrchestrator:
             llm_debug=llm_debug,
             agent_errors=agent_errors,
         )
+        self._record_scores(response)
+        langfuse.flush()
+        return response
 
+    @observe(name="analysis_request_stream")
     def run_streaming(self, request: AnalysisRequest) -> Generator[dict[str, Any], None, None]:
         """Yield one event per agent completion for SSE streaming."""
         state: dict[str, object] = {}
@@ -240,7 +249,37 @@ class LegalOrchestrator:
             llm_debug=llm_debug,
             agent_errors=agent_errors,
         )
+        self._record_scores(response)
         yield {"event": "done", "data": response.model_dump()}
+        langfuse.flush()
+
+    def _record_scores(self, response: AnalysisResponse) -> None:
+        """Attach evaluation scores to the current Langfuse trace."""
+        _CONFIDENCE_MAP = {"high": 1.0, "medium": 0.5, "low": 0.0}
+        _RISK_MAP = {"high": 1.0, "medium": 0.5, "low": 0.0}
+
+        confidence = getattr(response.confidence, "value", str(response.confidence))
+        langfuse.score_current_trace(
+            name="confidence",
+            value=_CONFIDENCE_MAP.get(confidence, 0.5),
+            data_type="NUMERIC",
+            comment=f"Review confidence: {confidence}",
+        )
+
+        risk = getattr(response.risk_level, "value", str(response.risk_level))
+        langfuse.score_current_trace(
+            name="risk_level",
+            value=_RISK_MAP.get(risk, 0.5),
+            data_type="NUMERIC",
+            comment=f"Risk level: {risk}",
+        )
+
+        langfuse.score_current_trace(
+            name="has_agent_errors",
+            value=len(response.agent_errors) == 0,
+            data_type="BOOLEAN",
+            comment=f"{len(response.agent_errors)} agent errors",
+        )
 
     def get_analysis(self, analysis_id: str) -> AnalysisResponse | None:
         stored = self.repository.get_analysis(analysis_id)

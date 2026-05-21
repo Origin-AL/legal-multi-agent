@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from langfuse import observe
+
 from app.agents.base import BaseAgent
 from app.models import MatterType
 from app.prompts import INTAKE_SYSTEM_PROMPT
@@ -11,6 +13,7 @@ from app.utils.normalizers import normalize_matter_type
 class IntakeAgent(BaseAgent):
     name = "intake_agent"
 
+    @observe(as_type="agent", name="intake_agent")
     def run(self, context: dict[str, Any]) -> dict[str, Any]:
         request = context["request"]
         user_prompt = (

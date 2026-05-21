@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from langfuse import observe
+
 from app.agents.base import BaseAgent
 from app.prompts import FACT_SYSTEM_PROMPT
 
@@ -9,6 +11,7 @@ from app.prompts import FACT_SYSTEM_PROMPT
 class FactExtractionAgent(BaseAgent):
     name = "fact_extraction_agent"
 
+    @observe(as_type="agent", name="fact_extraction_agent")
     def run(self, context: dict[str, Any]) -> dict[str, Any]:
         request = context["request"]
         lines = [f"QUERY: {request.user_query}"]
