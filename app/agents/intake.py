@@ -6,7 +6,7 @@ from langfuse import observe
 
 from app.agents.base import BaseAgent
 from app.models import MatterType
-from app.prompts import INTAKE_SYSTEM_PROMPT
+from app.prompts import INTAKE_SYSTEM_PROMPT as _INTAKE_FALLBACK
 from app.utils.normalizers import normalize_matter_type
 
 
@@ -21,9 +21,10 @@ class IntakeAgent(BaseAgent):
             f"CASE_TYPE_HINT: {request.case_type_hint or ''}\n"
             "Return the most likely legal matter type."
         )
+        system_prompt = self.prompt_manager.get_prompt("intake") if self.prompt_manager else _INTAKE_FALLBACK
         llm_result = self.llm_provider.generate_json(
             task="intake",
-            system_prompt=INTAKE_SYSTEM_PROMPT,
+            system_prompt=system_prompt,
             user_prompt=user_prompt,
         )
         matter_type = normalize_matter_type(str(llm_result.get("matter_type", MatterType.general_legal_consultation.value)))

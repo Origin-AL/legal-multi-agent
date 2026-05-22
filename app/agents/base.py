@@ -4,13 +4,15 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 from app.llm.base import BaseLLMProvider
+from app.prompt_manager import PromptManager
 
 
 class BaseAgent(ABC):
     name: str
 
-    def __init__(self, llm_provider: BaseLLMProvider) -> None:
+    def __init__(self, llm_provider: BaseLLMProvider, prompt_manager: PromptManager | None = None) -> None:
         self.llm_provider = llm_provider
+        self.prompt_manager = prompt_manager
 
     @abstractmethod
     def run(self, context: dict[str, Any]) -> dict[str, Any]:

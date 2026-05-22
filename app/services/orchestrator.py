@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
 from langfuse import observe
+from langfuse._client.propagation import propagate_attributes
 
 from app.agents.facts import FactExtractionAgent
 from app.agents.intake import IntakeAgent
@@ -16,6 +17,7 @@ from app.config import settings
 from app.observability import langfuse
 from app.llm.factory import build_llm_provider
 from app.llm.base import BaseLLMProvider
+from app.prompt_manager import PromptManager
 from app.models import (
     AgentError,
     AgentTrace,
@@ -74,11 +76,12 @@ class LegalOrchestrator:
 
         self.repository = repository
         self._langfuse = langfuse
-        self._intake = IntakeAgent(llm_provider)
-        self._facts = FactExtractionAgent(llm_provider)
+        self._prompt_manager = PromptManager(langfuse)
+        self._intake = IntakeAgent(llm_provider, self._prompt_manager)
+        self._facts = FactExtractionAgent(llm_provider, self._prompt_manager)
         self._retrieval = LegalRetrievalAgent(llm_provider, retriever)
-        self._reasoning = LegalReasoningAgent(llm_provider)
-        self._review = ReviewAgent(llm_provider)
+        self._reasoning = LegalReasoningAgent(llm_provider, self._prompt_manager)
+        self._review = ReviewAgent(llm_provider, self._prompt_manager)
         # Pipeline stages: list of agent groups. Groups run sequentially;
         # agents within a group run in parallel.
         self._stages: list[list] = [
@@ -141,6 +144,10 @@ class LegalOrchestrator:
 
     @observe(name="analysis_request")
     def run(self, request: AnalysisRequest) -> AnalysisResponse:
+        with propagate_attributes(session_id=request.session_id):
+            return self._run_pipeline(request)
+
+    def _run_pipeline(self, request: AnalysisRequest) -> AnalysisResponse:
         state: dict[str, object] = {}
         trace: list[AgentTrace] = []
         coordination_log: list[CoordinationMessage] = []
@@ -185,6 +192,10 @@ class LegalOrchestrator:
     @observe(name="analysis_request_stream")
     def run_streaming(self, request: AnalysisRequest) -> Generator[dict[str, Any], None, None]:
         """Yield one event per agent completion for SSE streaming."""
+        with propagate_attributes(session_id=request.session_id):
+            yield from self._run_pipeline_streaming(request)
+
+    def _run_pipeline_streaming(self, request: AnalysisRequest) -> Generator[dict[str, Any], None, None]:
         state: dict[str, object] = {}
         trace: list[AgentTrace] = []
         coordination_log: list[CoordinationMessage] = []

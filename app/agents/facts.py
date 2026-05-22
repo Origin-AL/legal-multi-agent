@@ -5,7 +5,7 @@ from typing import Any
 from langfuse import observe
 
 from app.agents.base import BaseAgent
-from app.prompts import FACT_SYSTEM_PROMPT
+from app.prompts import FACT_SYSTEM_PROMPT as _FACTS_FALLBACK
 
 
 class FactExtractionAgent(BaseAgent):
@@ -21,9 +21,10 @@ class FactExtractionAgent(BaseAgent):
                 chunk = chunk.strip()
                 if chunk:
                     lines.append(f"MATERIAL: {chunk}")
+        system_prompt = self.prompt_manager.get_prompt("facts") if self.prompt_manager else _FACTS_FALLBACK
         llm_result = self.llm_provider.generate_json(
             task="facts",
-            system_prompt=FACT_SYSTEM_PROMPT,
+            system_prompt=system_prompt,
             user_prompt="\n".join(lines),
         )
         facts = [str(item) for item in llm_result.get("facts", [])]

@@ -5,7 +5,7 @@ from typing import Any
 from langfuse import observe
 
 from app.agents.base import BaseAgent
-from app.prompts import REVIEW_SYSTEM_PROMPT
+from app.prompts import REVIEW_SYSTEM_PROMPT as _REVIEW_FALLBACK
 from app.utils.normalizers import normalize_confidence_level
 
 
@@ -31,9 +31,10 @@ class ReviewAgent(BaseAgent):
                 f"draft_opinion={draft_opinion}",
             ]
         )
+        system_prompt = self.prompt_manager.get_prompt("review") if self.prompt_manager else _REVIEW_FALLBACK
         llm_result = self.llm_provider.generate_json(
             task="review",
-            system_prompt=REVIEW_SYSTEM_PROMPT,
+            system_prompt=system_prompt,
             user_prompt=user_prompt,
         )
         confidence = normalize_confidence_level(str(llm_result.get("confidence", "medium")))

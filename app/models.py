@@ -35,6 +35,7 @@ class AnalysisRequest(BaseModel):
     user_query: str = Field(..., min_length=1, max_length=10_000)
     case_type_hint: str | None = Field(None, max_length=200)
     materials: list[CaseMaterial] = Field(default_factory=list, max_length=20)
+    session_id: str | None = Field(None, max_length=200, description="Frontend conversation session ID for Langfuse Sessions grouping.")
 
 
 class AgentTrace(BaseModel):

@@ -6,7 +6,7 @@ from langfuse import observe
 
 from app.agents.base import BaseAgent
 from app.models import Citation, IssueItem
-from app.prompts import REASONING_SYSTEM_PROMPT
+from app.prompts import REASONING_SYSTEM_PROMPT as _REASONING_FALLBACK
 from app.utils.normalizers import normalize_risk_level
 
 
@@ -25,9 +25,10 @@ class LegalReasoningAgent(BaseAgent):
                 f"authorities={[citation.model_dump() for citation in legal_basis]}",
             ]
         )
+        system_prompt = self.prompt_manager.get_prompt("reasoning") if self.prompt_manager else _REASONING_FALLBACK
         llm_result = self.llm_provider.generate_json(
             task="reasoning",
-            system_prompt=REASONING_SYSTEM_PROMPT,
+            system_prompt=system_prompt,
             user_prompt=user_prompt,
         )
         issues = [

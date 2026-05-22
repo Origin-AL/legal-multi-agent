@@ -460,6 +460,55 @@ INDEX_HTML = """<!doctype html>
       width: 6px; height: 6px;
       border-radius: 999px;
       background: var(--text-secondary);
+      animation: dotBounce 1.4s ease-in-out infinite;
+    }
+    .msg-loading .dot:nth-child(2) { animation-delay: 0.2s; }
+    .msg-loading .dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes dotBounce {
+      0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+      40% { transform: scale(1); opacity: 1; }
+    }
+
+    /* streaming status bar */
+    .st-status {
+      display: flex !important;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px !important;
+      margin-top: 8px;
+      border-radius: 8px;
+      background: var(--accent-light);
+      font-size: 13px;
+      color: var(--accent) !important;
+      transition: all 0.3s ease;
+    }
+    .st-spinner {
+      width: 14px; height: 14px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .st-status .st-dot-bar {
+      display: inline-flex;
+      gap: 3px;
+      margin-left: 2px;
+    }
+    .st-status .st-dot-bar span {
+      width: 4px; height: 4px;
+      border-radius: 999px;
+      background: var(--accent);
+      animation: dotPulse 1.4s ease-in-out infinite;
+    }
+    .st-status .st-dot-bar span:nth-child(2) { animation-delay: 0.2s; }
+    .st-status .st-dot-bar span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes dotPulse {
+      0%, 80%, 100% { transform: scale(0.5); opacity: 0.3; }
+      40% { transform: scale(1.2); opacity: 1; }
     }
 
     /* input bar */
@@ -990,9 +1039,10 @@ INDEX_HTML = """<!doctype html>
         '<div class="st-actions ' + uid + '"></div>' +
         '<div class="st-basis ' + uid + '"></div>' +
         '<div class="st-review ' + uid + '"></div>' +
-        '<div class="st-status ' + uid + '" style="padding:8px 0;font-size:13px;color:var(--text-muted)">' +
-          '<span class="dot"></span><span class="dot"></span><span class="dot"></span>' +
-          ' <span class="st-status-text ' + uid + '">正在分析...</span></div>' +
+        '<div class="st-status ' + uid + '">' +
+          '<span class="st-spinner"></span>' +
+          ' <span class="st-status-text ' + uid + '">正在分析</span>' +
+          '<span class="st-dot-bar"><span></span><span></span><span></span></span></div>' +
         '</div></div>';
       el.chatContainer.appendChild(div);
       scrollToBottom();
@@ -1015,7 +1065,7 @@ INDEX_HTML = """<!doctype html>
         ctx.matter = data.matter_type || "general_legal_consultation";
         var el2 = c.querySelector(".st-matter." + u);
         if (el2) el2.innerHTML = '<div style="margin-bottom:8px">' + matterTag(ctx.matter) + '</div>';
-        if (statusText) statusText.textContent = "分类完成，正在提取事实...";
+        if (statusText) statusText.textContent = "分类完成，提取事实中";
 
       } else if (agent === "fact_extraction_agent") {
         var el2 = c.querySelector(".st-facts." + u);
@@ -1024,7 +1074,7 @@ INDEX_HTML = """<!doctype html>
             return '<li>' + esc(f) + '</li>';
           }).join(""), false);
         }
-        if (statusText) statusText.textContent = "事实提取完成，正在检索法条...";
+        if (statusText) statusText.textContent = "事实提取完成，检索法条中";
 
       } else if (agent === "legal_retrieval_agent") {
         var el2 = c.querySelector(".st-basis." + u);
@@ -1034,7 +1084,7 @@ INDEX_HTML = """<!doctype html>
           }).join("");
           el2.innerHTML = buildSection("法律依据", items, false);
         }
-        if (statusText) statusText.textContent = "法条检索完成，正在生成分析...";
+        if (statusText) statusText.textContent = "法条检索完成，生成分析中";
 
       } else if (agent === "legal_reasoning_agent") {
         var opEl = c.querySelector(".st-opinion." + u);
@@ -1056,7 +1106,7 @@ INDEX_HTML = """<!doctype html>
             return '<li>' + esc(a) + '</li>';
           }).join(""), false);
         }
-        if (statusText) statusText.textContent = "分析完成，正在复核...";
+        if (statusText) statusText.textContent = "分析完成，复核中";
 
       } else if (agent === "review_agent") {
         var el2 = c.querySelector(".st-review." + u);
@@ -1071,7 +1121,15 @@ INDEX_HTML = """<!doctype html>
             opHead.innerHTML += '<span class="tag on-dark">置信度: ' + esc(data.confidence) + '</span>';
           }
         }
-        if (statusText) statusText.textContent = "分析完成";
+        if (statusText) {
+          statusText.textContent = "分析完成";
+          var spinner = c.querySelector(".st-spinner." + u) || c.querySelector(".st-status." + u + " .st-spinner");
+          if (spinner) { spinner.style.border = "none"; spinner.textContent = "✓"; spinner.style.animation = "none"; spinner.style.color = "var(--risk-low)"; spinner.style.fontSize = "14px"; spinner.style.width = "auto"; spinner.style.height = "auto"; }
+          var dotBar = c.querySelector(".st-status." + u + " .st-dot-bar");
+          if (dotBar) dotBar.remove();
+          var status = c.querySelector(".st-status." + u);
+          if (status) { status.style.background = "var(--risk-low-bg)"; status.style.color = "var(--risk-low)"; }
+        }
       }
       scrollToLatestAiMsg();
     }
@@ -1204,7 +1262,8 @@ INDEX_HTML = """<!doctype html>
       if (!query) { el.queryInput.focus(); return; }
 
       if (currentSession === null) {
-        sessions.unshift({ title: query.slice(0, 30), messages: [], createdAt: Date.now() });
+        var sid = "sess_" + (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+        sessions.unshift({ title: query.slice(0, 30), messages: [], createdAt: Date.now(), sessionId: sid });
         currentSession = 0;
         el.welcome.style.display = "none";
         el.chatContainer.innerHTML = "";
@@ -1223,7 +1282,7 @@ INDEX_HTML = """<!doctype html>
         var resp = await fetch("/analysis/stream", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_query: query }),
+          body: JSON.stringify({ user_query: query, session_id: sessions[currentSession].sessionId || null }),
           signal: activeController.signal
         });
         if (!resp.ok) {
